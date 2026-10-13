@@ -1,0 +1,8 @@
+.gradle/
+.tools/
+local.properties
+**/build/
+artifacts/
+*.iml
+.idea/
+.codex-remote-attachments/

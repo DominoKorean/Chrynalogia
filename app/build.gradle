@@ -1,0 +1,27 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'dev.chrynalogia.probe'
+    compileSdk 37
+    defaultConfig {
+        applicationId 'dev.chrynalogia.probe'
+        minSdk 34
+        targetSdk 37
+        versionCode 12
+        versionName '0.12'
+        testInstrumentationRunner 'dev.chrynalogia.probe.RenderChecks'
+    }
+    buildTypes {
+        debug { debuggable true }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    lint { abortOnError true }
+}
+
+dependencies {
+    implementation 'com.caverock:androidsvg-aar:1.4'
+    testImplementation 'junit:junit:4.13.2'
+}

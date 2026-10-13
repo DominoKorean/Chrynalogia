@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <queries><package android:name="com.sec.android.app.camera" /></queries>
+    <application android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules"
+        android:icon="@mipmap/ic_launcher" android:label="@string/app_name"
+        android:supportsRtl="true" android:localeConfig="@xml/locales_config" android:theme="@style/AppDark">
+        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".ImportActivity" android:exported="false" android:configChanges="orientation|screenSize|smallestScreenSize|keyboardHidden" />
+        <service android:name=".ManualSessionService" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-started camera composition overlay session with an ongoing stop notification; ends on reboot." />
+        </service>
+        <service android:name=".CameraWatchService" android:exported="true"
+            android:label="Chrynalogia" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/camera_watch" />
+        </service>
+    </application>
+</manifest>
