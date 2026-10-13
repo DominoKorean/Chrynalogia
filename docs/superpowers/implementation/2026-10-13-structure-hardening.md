@@ -33,13 +33,13 @@
 1. 반전 갱신: `SettingsChange`의 렌더 상태에 flipX/Y를 추가했다. 반전은 SVG Picture를 초기화하지 않는다. 단위 검사에서 필드 부재로 실패하는 것을 확인한 뒤 통과했다. 동일 GridView에 서비스의 실제 `applyPendingSettings`를 호출하는 기기 회귀도 추가했다.
 2. 세션 경합: `SessionLifetime`은 요청 번호와 준비된 서비스 소유자를 추적한다. 이전 세대·다른 소유자의 종료는 현재 요청을 취소하거나 준비 상태를 지우지 못한다. 정책 단위 검사 RED→GREEN을 확인했다. 실제 서비스의 같은 main callback 안에서 manual→always→manual 전환 검사도 추가했다.
 3. 중첩 백업: script scope 대신 runspace의 명시적 공유 상태에서 장치와 깊이를 추적한다. 실제 자식 ps1 fixture가 수정 전 바깥쪽 백업을 덮어쓰는 실패를 재현했고, 수정 후 backup/restore 각 1회를 확인했다.
-4. 설정 commit 실패: commit(false)가 메모리를 변경할 수 있으므로 파일과 함께 imports/selected 원본 키를 직접 복원한다. 복원 commit 실패도 원인과 로그에 남기고 다른 복원을 수행한다. 주입한 writer가 메모리를 변경하고 false를 반환하는 기기 검사, 메모리를 복구하고 디스크 실패를 전달하는 단위 검사를 추가했다. 기기 실패 주입 검사의 수정 전/후 실행은 연결 단절로 수행하지 못했다.
-5. 복원 중 실패: debug 상태와 계측 runner는 독립 복원 단계를 모두 실행하고 오류를 suppressed에 보존한다. runner는 본문 오류도 보존해 최종 결과를 보고한다. 복원 실행기의 RED→GREEN과 파일 실패 후 남은 파일·설정 복원 기기 검사를 추가했다. Android 복원 기기 검사는 미실행이다.
+4. 설정 commit 실패: commit(false)가 메모리를 변경할 수 있으므로 파일과 함께 imports/selected 원본 키를 직접 복원한다. 복원 commit 실패도 원인과 로그에 남기고 다른 복원을 수행한다. 주입한 writer가 메모리를 변경하고 false를 반환하는 기기 검사, 메모리를 복구하고 디스크 실패를 전달하는 단위 검사를 추가했다. 기기 실패 주입 검사의 수정 전 실행은 연결 단절로 수행하지 못했으며, 재연결 후 수정 코드의 가져오기·삭제 commit 실패 검사는 통과했다.
+5. 복원 중 실패: debug 상태와 계측 runner는 독립 복원 단계를 모두 실행하고 오류를 suppressed에 보존한다. runner는 본문 오류도 보존해 최종 결과를 보고한다. 복원 실행기의 RED→GREEN과 파일 실패 후 남은 파일·설정 복원 기기 검사를 추가했다. 재연결 후 파일 삭제 실패가 남은 파일·설정 복원을 막지 않는 Android 검사도 통과했다.
 
-최종 로컬 결과: 단위 19개(실패·오류 0), PowerShell 36개, debug/AndroidTest APK와 release main manifest 빌드 성공, lint 0 errors / 기존 1 warning. 최종 기기 suite는 총 74개로 확장해 컴파일했다. 기존 S23 64개 통과는 리뷰 수정 전 결과이며 최종 기기 통과를 의미하지 않는다.
+최종 로컬 결과: 단위 19개(실패·오류 0), PowerShell 36개, debug/AndroidTest APK와 release main manifest 빌드 성공, lint 0 errors / 기존 1 warning. 2026-10-14 최종 APK를 S23에 설치하고 전체 suite 74개(렌더 36, 설정 8, 파일 11, 세션 5, 캐시·서비스 반전 갱신 7, 실패 주입·복원 7)가 통과했다. `artifacts/hardening/reconnect-all.log`에 PASS 결과를 기록했다.
 
-추가 세션 검사에서 `INSTRUMENTATION_RESULT: shortMsg=Process crashed`가 보고된 뒤 장치가 ADB 목록에서 사라졌다. 원인과 원래 상태 복원을 확인하지 못했으며, 연결 복구를 요청했다. `artifacts/hardening/device-original-prefs.xml`과 장치 내부 test-state.json 백업을 보존했다. 최종 APK를 장치에 설치하거나 새 검사를 실행하기 전에 원래 설정·실행 상태를 복원하고 연결 상태를 확인해야 한다. 새 기기 검사는 이 상태 복원을 먼저 완료한 뒤 실행한다.
+추가 세션 검사에서 `INSTRUMENTATION_RESULT: shortMsg=Process crashed`가 보고된 뒤 장치가 ADB 목록에서 사라졌다. 당시 원인과 원래 상태 복원을 확인하지 못해 연결 복구를 요청했다. `artifacts/hardening/device-original-prefs.xml`과 장치 내부 test-state.json 백업을 보존했다. 재연결 후 백업·현재 부팅 번호 473이 같은 것을 확인하고 기존 APK에서 먼저 원래 상태를 복원했다. 이어 최종 APK 설치·전체 검사·원래 상태 재복원을 완료했다. 복원 broadcast는 result=0이고 최종 SharedPreferences의 모든 키·값이 초기 XML 백업과 같음을 비교했다. 테스트 그리드 폴더는 비어 있고 앱 언어 ko를 확인했으며 수동 서비스도 남아 있지 않다. USB 케이블 연결 불량은 사용자가 확인했다. 별개로 보존된 Android 로그에서 수정 전 세션 회귀의 ForegroundServiceDidNotStartInTimeException을 확인했고 수정 후 동일 전환 검사는 통과했다.
 
-리뷰어가 판단하지 않은 실제 카메라 창 타이밍·외관, 물리 입력, 다른 기종, 프레임 시간·배터리, Android 수명/저장 실패 재현은 기기 검증 없이는 보장하지 않는 것으로 판정했다. 코드와 단위 검사로 확인한 경합 방어·실패 복구를 실제 기기 검증 수치로 바꾸어 표현하지 않는다.
+리뷰어가 판단하지 않은 실제 카메라 창 타이밍·외관, 물리 입력, 다른 기종, 프레임 시간·배터리는 기기 계측 통과로 보장하지 않는 것으로 판정했다. Android 서비스 수명과 실패 복구 회귀는 재연결 후 검사했다. 저장 실패는 메모리를 실제 변경한 뒤 false를 반환하는 writer로 주입했으며 실제 저장 공간 고갈은 미실행이다. 코드와 단위 검사로 확인한 경합 방어·실패 복구를 실제 기기 검증 수치로 바꾸어 표현하지 않는다.
 
-추가 실행 판단: 사용자의 직접 코드 적용 지시 범위에서 현재 브랜치를 유지했다. 병합·push·PR 요청이 없어 추가 통합 승인 메뉴는 열지 않았다. 기기 미연결로 사용자 상태 복원을 확인하지 못했으므로 백업과 실행 ledger도 보존한다. 후속 작업의 비용은 연결 후 복원 확인과 계측 재실행이다. Deferred minors: 없음.
+추가 실행 판단: 사용자의 직접 코드 적용 지시 범위에서 현재 브랜치를 유지했다. 병합·push·PR 요청이 없어 추가 통합 승인 메뉴는 열지 않았다. 재연결 후 사용자 상태 복원과 계측을 완료했다. 감사·회귀 재현을 위한 상세 로그와 백업은 이미 제외된 artifacts/hardening에 유지한다. 남은 후속 검증은 접근성 연결 후 카메라 UI와 물리 입력·성능 측정이다. Deferred minors: 없음.

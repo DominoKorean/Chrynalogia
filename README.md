@@ -15,7 +15,7 @@
 
 계측 runner의 `suite`는 `settings`, `files`, `session`, `render`, `render-hardening`, `failures`, `all`입니다. `all`은 검사 그룹 사이와 종료 시 사용자 설정을 복원합니다. UI 검사에는 이미 허용·연결된 접근성 서비스와 한국어 삼성 카메라 UI가 필요합니다. 기존 v0.9 전용 Feature/Style/Session/Lifecycle/Import 스크립트는 보관용이며 현재 UI에서 실행하지 않습니다.
 
-현재 최종 코드 검증: 단위 검사 19개, PowerShell 검사 36개 통과, debug·계측 APK 빌드 성공, lint 오류 0. 최종 리뷰 수정 전 S23 계측 64개는 통과했습니다. 추가 세션 검사 중 프로세스 종료가 보고됐고 이후 ADB 연결이 없어 최종 코드의 기기 74개 검사와 중단 이후 사용자 상태 복원은 확인하지 못했습니다. 카메라 위 UI 검사는 기기의 접근성 연결이 꺼져 있어 이번 실행에 포함하지 못했습니다. 실제 손가락 입력, 다른 기종과 배터리·프레임 시간 개선은 이 결과로 검증했다고 주장하지 않습니다. 상세 기록은 `docs/superpowers/implementation/2026-10-13-structure-hardening.md`와 로컬 `artifacts/hardening`에 있습니다.
+현재 최종 코드 검증: 단위 검사 19개, PowerShell 검사 36개 통과, debug·계측 APK 빌드 성공, lint 오류 0. 2026-10-14 재연결된 S23에서 최종 계측 74개가 통과했으며, 테스트 종료 후 원래 설정과 언어를 복원하고 테스트 파일을 정리했습니다. 카메라 위 UI 검사는 기기의 접근성 연결이 꺼져 있어 이번 실행에 포함하지 못했습니다. 실제 손가락 입력, 다른 기종과 배터리·프레임 시간 개선은 이 결과로 검증했다고 주장하지 않습니다. 상세 기록은 `docs/superpowers/implementation/2026-10-13-structure-hardening.md`와 로컬 `artifacts/hardening`에 있습니다.
 
 삼성 공식 카메라 위에 구도 그리드를 표시하는 Android 앱입니다. 실제 `camera_preview`의 접근성 좌표를 읽으므로 촬영 비율과 모드가 바뀌어도 미리보기 영역을 따라갑니다. Galaxy S23 / One UI 8.5에서 개발·검증합니다.
 
