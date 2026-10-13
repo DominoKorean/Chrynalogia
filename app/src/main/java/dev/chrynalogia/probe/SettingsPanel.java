@@ -52,7 +52,7 @@ final class SettingsPanel extends FrameLayout {
         if(compact||page!=0)collapseHeader();
     }
     private String s(int id) {return getContext().getString(id);}
-    private void changed() {settings.save();actions.changed();for(GridView v:previews)v.applySettings();}
+    private void changed() {SettingsStore.saveChanges(settings);actions.changed();for(GridView v:previews)v.applySettings();}
     private void build() {
         settings.reload();content.removeAllViews();previews.clear();tiles.clear();
         setBackgroundColor(Ui.bg(getContext()));

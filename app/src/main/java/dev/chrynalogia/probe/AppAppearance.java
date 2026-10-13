@@ -7,7 +7,7 @@ import android.os.LocaleList;
 
 /** App-only appearance and Android's persisted per-app language selection. */
 final class AppAppearance {
-    static String theme(Context c) {return c.getSharedPreferences("probe",0).getString("appTheme","system");}
+    static String theme(Context c) {Object value=c.getSharedPreferences("probe",0).getAll().get("appTheme");return "light".equals(value)?"light":"dark".equals(value)?"dark":"system";}
     static boolean dark(Context c) {
         String mode=theme(c);
         return mode.equals("dark") || (mode.equals("system") &&

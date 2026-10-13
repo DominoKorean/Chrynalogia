@@ -13,8 +13,9 @@ import java.util.*;
 /** Device-side rendering/import checks, with user preferences restored in finally. */
 public final class RenderChecks extends Instrumentation {
     private int passed;
+    private String suite="all";
     private final ArrayList<File> created=new ArrayList<>();
-    @Override public void onCreate(Bundle arguments) {super.onCreate(arguments);start();}
+    @Override public void onCreate(Bundle arguments) {super.onCreate(arguments);if(arguments!=null)suite=arguments.getString("suite","all");start();}
     @Override public void onStart() {
         Context c=getTargetContext();SharedPreferences prefs=c.getSharedPreferences("probe",Context.MODE_PRIVATE);
         Map<String,?> original=new HashMap<>(prefs.getAll());
@@ -22,6 +23,9 @@ public final class RenderChecks extends Instrumentation {
         Bundle result=new Bundle();
         int resultCode=-1;
         try {
+            if(suite.equals("settings")) {
+                passed+=SettingsChecks.run(c);
+            } else {
             GridSettings settings=new GridSettings(c);settings.hidden=false;settings.rotation=0;settings.flipX=false;settings.flipY=false;
             settings.color=Color.WHITE;settings.opacity=1;settings.thickness=1.2f;settings.outline=false;settings.multi=false;settings.save();
             for(String id:GridGeometry.IDS) {settings.selected=Set.of(id);settings.save();check(nonempty(render(c))>0,"Rendered "+id);}
@@ -72,7 +76,8 @@ public final class RenderChecks extends Instrumentation {
             check(!settings.active(c),"Manual mode never runs without its foreground notification service");
             ManualSessionService.running=true;check(settings.active(c),"Manual session active in current boot");
             prefs.edit().putInt("sessionBoot",GridSettings.boot(c)-1).commit();check(!settings.active(c),"Manual session expires across boot count");
-            result.putString("stream","PASS: "+passed+" rendering, import and session checks\n");
+            }
+            result.putString("stream","PASS: "+passed+" "+suite+" checks\n");
         } catch(Throwable error) {resultCode=0;result.putString("stream","FAIL after "+passed+" checks: "+error+"\n");}
         finally {
             SharedPreferences.Editor edit=prefs.edit().clear();
