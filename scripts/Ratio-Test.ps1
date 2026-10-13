@@ -1,5 +1,9 @@
 param([string]$Serial, [string]$OutputFolder)
 . "$PSScriptRoot\Camera-Ui.ps1" -Serial $Serial
+Start-ProbeTest
+Invoke-ProbeTest {
+$display=Get-ProbeDisplay
+$swipeX=[int]($display.Width*0.79);$swipeBottom=[int]($display.Height*0.79);$swipeMiddle=[int]($display.Height*0.53);$swipeTop=[int]($display.Height*0.34)
 $folder=if ($OutputFolder) { $OutputFolder } else { Join-Path $script:ProjectRoot 'artifacts\ratio-test' }
 New-Item -ItemType Directory -Force $folder | Out-Null
 $results=[System.Collections.Generic.List[object]]::new()
@@ -68,3 +72,5 @@ try {
     if (-not $restored) { throw 'Could not restore the original camera ratio; test results are saved separately.' }
     Write-Output "Restored original ratio: $original"
 }
+
+} @({ Stop-ProbeTest })

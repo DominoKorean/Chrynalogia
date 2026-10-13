@@ -1,5 +1,6 @@
 param([string]$Serial)
 . "$PSScriptRoot\Camera-Ui.ps1" -Serial $Serial
+. "$PSScriptRoot\Test-State.ps1"
 function Read-AppNodes {
     Send-ProbeCommand capture | Out-Null
     $tree=(Invoke-ProbeAdb shell run-as dev.chrynalogia.probe cat files/app-ui.txt) -join "`n"
@@ -11,9 +12,11 @@ function Read-AppNodes {
 }
 function Tap-AppLabel {
     param([string]$Label,[switch]$Scroll,[switch]$Up,[switch]$EnsureChecked)
+    $display=Get-ProbeDisplay
+    $sx=[int]($display.Width*0.79);$sy=[int]($display.Height*0.79);$sm=[int]($display.Height*0.53);$st=[int]($display.Height*0.34)
     for ($i=0;$i -lt 22;$i++) {
         $nodes=@(Read-AppNodes)
-        $node=$nodes | Where-Object { $_.Visible -and $_.Clickable -and ($_.Text -eq $Label -or $_.Description -eq $Label) -and $_.Bottom-$_.Top -ge 80 } | Select-Object -First 1
+        $node=$nodes | Where-Object { $_.Visible -and $_.Clickable -and ($_.Text -eq $Label -or $_.Description -eq $Label) -and $_.Bottom-$_.Top -ge (30*$display.DensityScale) } | Select-Object -First 1
         if($node -and $Label -notin @('그리드','라인','설정','Grid','Line','Settings')) {
             $centerX=($node.Left+$node.Right)/2
             $bar=$nodes | Where-Object {$_.Visible -and $_.Clickable -and $_.Description -in @('그리드','라인','설정','Grid','Line','Settings') -and $centerX -ge $_.Left -and $centerX -le $_.Right} | Select-Object -First 1
@@ -25,8 +28,8 @@ function Tap-AppLabel {
         $state=(Get-CameraSnapshot).State
         if($state.foreground -notin @('com.sec.android.app.camera','dev.chrynalogia.probe')) {throw "App left foreground while looking for: $Label"}
         if (-not $Scroll) { if($i -lt 3){Start-Sleep -Milliseconds 250;continue};throw "UI label missing: $Label" }
-        if ($Up) { Invoke-ProbeAdb shell input swipe 850 800 850 1400 500 }
-        else { Invoke-ProbeAdb shell input swipe 850 1850 850 1250 500 }
+        if ($Up) { Invoke-ProbeAdb shell input swipe $sx $st $sx $sm 500 }
+        else { Invoke-ProbeAdb shell input swipe $sx $sy $sx $sm 500 }
         Start-Sleep -Milliseconds 700
     }
     throw "Scrolled UI label missing: $Label"

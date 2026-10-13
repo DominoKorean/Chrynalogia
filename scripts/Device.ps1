@@ -1,6 +1,7 @@
 param([string]$Serial)
 $ErrorActionPreference = 'Stop'
 $script:ProjectRoot = Split-Path $PSScriptRoot -Parent
+. "$PSScriptRoot\Test-State.ps1"
 $script:AdbPath = Join-Path $script:ProjectRoot '.tools\android-sdk\platform-tools\adb.exe'
 if (-not (Test-Path $script:AdbPath)) {
     $found = Get-Command adb -ErrorAction SilentlyContinue
@@ -23,6 +24,8 @@ function Invoke-ProbeAdb {
 }
 function Send-ProbeCommand {
     param([string]$Command, [string[]]$ExtraArguments = @())
-    Invoke-ProbeAdb shell am broadcast --receiver-foreground -a dev.chrynalogia.probe.DEBUG `
+    $result=Invoke-ProbeAdb shell am broadcast --receiver-foreground -a dev.chrynalogia.probe.DEBUG `
         -n dev.chrynalogia.probe/.DebugReceiver --es command $Command @ExtraArguments
+    if (($result -join "`n") -match 'result=([1-9]\d*)') { throw "Probe command failed: $($result -join ' ')" }
+    $result
 }

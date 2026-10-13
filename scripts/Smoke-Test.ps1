@@ -1,5 +1,9 @@
 param([string]$Serial)
 . "$PSScriptRoot\Device.ps1" -Serial $Serial
+Start-ProbeTest
+Invoke-ProbeTest {
+$display=Get-ProbeDisplay
+$swipeX=[int]($display.Width*0.79);$swipeBottom=[int]($display.Height*0.79);$swipeMiddle=[int]($display.Height*0.53);$swipeTop=[int]($display.Height*0.34)
 $checks = [System.Collections.Generic.List[object]]::new()
 function Assert-Overlay {
     param([string]$Name, [bool]$Expected)
@@ -39,3 +43,5 @@ try {
     $checks | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 (Join-Path $folder 'smoke-test.json')
 }
 Write-Output 'These checks verify app/window state. Inspect screenshots and use real finger input to verify visibility and touch delivery.'
+
+} @({ Stop-ProbeTest })

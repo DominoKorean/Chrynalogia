@@ -1,5 +1,9 @@
 param([string]$Serial)
 . "$PSScriptRoot\App-Ui.ps1" -Serial $Serial
+Start-ProbeTest
+Invoke-ProbeTest {
+$display=Get-ProbeDisplay
+$swipeX=[int]($display.Width*0.79);$swipeBottom=[int]($display.Height*0.79);$swipeMiddle=[int]($display.Height*0.53);$swipeTop=[int]($display.Height*0.34)
 $folder=Join-Path $script:ProjectRoot 'artifacts\v12-checks'
 New-Item -ItemType Directory -Force $folder | Out-Null
 $checks=[System.Collections.Generic.List[object]]::new()
@@ -8,9 +12,9 @@ function Save-Screen([string]$Name){Invoke-ProbeAdb shell screencap -p /data/loc
 function Set-Hex([string]$Value){Tap-AppLabel '라인 색상 HEX';Invoke-ProbeAdb shell input keyevent KEYCODE_MOVE_END KEYCODE_DEL KEYCODE_DEL KEYCODE_DEL KEYCODE_DEL KEYCODE_DEL KEYCODE_DEL KEYCODE_DEL;Invoke-ProbeAdb shell input text $Value;Invoke-ProbeAdb shell input keyevent KEYCODE_ENTER;Start-Sleep -Milliseconds 350;if((Invoke-ProbeAdb shell dumpsys input_method | Select-String 'mInputShown=true')){Invoke-ProbeAdb shell input keyevent KEYCODE_BACK}}
 function Set-Slider([string]$Label,[int]$Value,[int]$Min,[int]$Max){
  for($i=0;$i -lt 14;$i++){
-  $node=@(Read-AppNodes)|Where-Object {$_.Description -eq $Label -and $_.Class -match '(SeekBar|KitSlider)$' -and $_.Visible -and $_.Bottom -lt 2020 -and $_.Bottom-$_.Top -ge 100}|Select-Object -First 1
-  if($node){Start-Sleep -Milliseconds 500;$padding=12*2.625;$x=[int]($node.Left+$padding+($Value-$Min)/[double]($Max-$Min)*($node.Right-$node.Left-2*$padding));Invoke-ProbeAdb shell input tap $x ([int](($node.Top+$node.Bottom)/2));Start-Sleep -Milliseconds 300;return}
-  Invoke-ProbeAdb shell input swipe 850 1850 850 1250 400;Start-Sleep -Milliseconds 700
+  $node=@(Read-AppNodes)|Where-Object {$_.Description -eq $Label -and $_.Class -match '(SeekBar|KitSlider)$' -and $_.Visible -and $_.Bottom -lt ($display.Height*0.86) -and $_.Bottom-$_.Top -ge (36*$display.DensityScale)}|Select-Object -First 1
+  if($node){Start-Sleep -Milliseconds 500;$padding=12*(Get-ProbeDisplay).DensityScale;$x=[int]($node.Left+$padding+($Value-$Min)/[double]($Max-$Min)*($node.Right-$node.Left-2*$padding));Invoke-ProbeAdb shell input tap $x ([int](($node.Top+$node.Bottom)/2));Start-Sleep -Milliseconds 300;return}
+  Invoke-ProbeAdb shell input swipe $swipeX $swipeBottom $swipeX $swipeMiddle 400;Start-Sleep -Milliseconds 700
  };throw "Missing slider: $Label"
 }
 Invoke-ProbeAdb shell am start -n dev.chrynalogia.probe/.MainActivity | Out-Null
@@ -38,7 +42,7 @@ try{
  Save-Screen 'grid-custom'
  Tap-AppLabel '라인';Start-Sleep -Milliseconds 400
  $nodes=@(Read-AppNodes);$first=$nodes|Where-Object {$_.Text -eq '노란색'}|Select-Object -First 1
- Check-Ui 'Line tab starts at its first function' ($first.Top -lt 250)
+ Check-Ui 'Line tab starts at its first function' ($first.Top -lt (96*$display.DensityScale))
  $hex=$nodes|Where-Object {$_.Class -eq 'android.widget.EditText' -and $_.Description -eq '라인 색상 HEX'}|Select-Object -First 1
  Check-Ui 'HEX editor displays exactly six digits' ($hex.Text -match '^[0-9A-F]{6}$')
  $custom=$nodes|Where-Object {$_.Text -eq '커스텀' -and $_.Class -eq 'android.widget.RadioButton'}|Select-Object -First 1
@@ -53,7 +57,7 @@ try{
  Set-Slider '불투명도' ([int][Math]::Round($original.lineOpacity*100)) 0 100;Set-Slider '선 두께' ([int][Math]::Round($original.lineThickness*10)) 3 60
  Tap-AppLabel '설정';Start-Sleep -Milliseconds 400
  $nodes=@(Read-AppNodes);$language=$nodes|Where-Object {$_.Description -eq '언어' -and $_.Clickable}|Select-Object -First 1
- Check-Ui 'Short Settings tab also starts at its first function' ($language.Top -lt 250)
+ Check-Ui 'Short Settings tab also starts at its first function' ($language.Top -lt (96*$display.DensityScale))
  Check-Ui 'Settings group headings are removed' (-not (@('앱 기본 설정','실행 방식','권한')|Where-Object {$nodes.Text -contains $_}))
  Save-Screen 'settings'
  Tap-AppLabel '그리드';Tap-AppLabel '라바트망' -Scroll -EnsureChecked
@@ -80,3 +84,5 @@ try{
  $checks|ConvertTo-Json -Depth 7|Set-Content -Encoding utf8 (Join-Path $folder 'ui-checks.json')
 }
 Write-Output "Passed $($checks.Count) One UI checks"
+
+} @({ Stop-ProbeTest })

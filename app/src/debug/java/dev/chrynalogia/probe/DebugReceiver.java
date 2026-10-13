@@ -8,6 +8,25 @@ import android.graphics.Rect;
 /** Debug build only, protected by DUMP permission (ADB shell/system). */
 public final class DebugReceiver extends BroadcastReceiver {
     @Override public void onReceive(Context context, Intent intent) {
+        String requested=intent.getStringExtra("command");
+        if("backup-state".equals(requested)||"restore-state".equals(requested)) {
+            try {
+                if("backup-state".equals(requested)){DebugState.save(context);setResultCode(0);setResultData("State backed up");}
+                else {
+                    org.json.JSONObject state=DebugState.read(context);
+                    if(!state.getBoolean("running")&&ManualSessionService.running) {
+                        context.stopService(new Intent(context,ManualSessionService.class));
+                        PendingResult result=goAsync();android.os.Handler handler=new android.os.Handler(android.os.Looper.getMainLooper());
+                        handler.post(new Runnable(){int attempts;public void run(){
+                            if(ManualSessionService.running&&attempts++<50){handler.postDelayed(this,100);return;}
+                            try{if(ManualSessionService.running)throw new java.io.IOException("Session did not stop");DebugState.restore(context,state);result.setResultCode(0);result.setResultData("State restored");}
+                            catch(Exception error){result.setResultCode(3);result.setResultData(error.toString());}finally{result.finish();}
+                        }});
+                    } else {DebugState.restore(context,state);setResultCode(0);setResultData("State restored");}
+                }
+            }catch(Exception error){setResultCode(3);setResultData(error.toString());}
+            return;
+        }
         CameraWatchService service = CameraWatchService.instance;
         if (service == null) {
             ProbeLog.write(context, "probe-status.json", "{\"connected\":false,\"overlayAttached\":false}");

@@ -1,17 +1,18 @@
 param([string]$Serial)
 . "$PSScriptRoot\App-Ui.ps1" -Serial $Serial
+Start-ProbeTest
+Invoke-ProbeTest {
+$display=Get-ProbeDisplay
+$swipeX=[int]($display.Width*0.79);$swipeBottom=[int]($display.Height*0.79);$swipeMiddle=[int]($display.Height*0.53);$swipeTop=[int]($display.Height*0.34)
 $folder=Join-Path $script:ProjectRoot 'artifacts\redesign-checks'
 $checks=[System.Collections.Generic.List[object]]::new()
-$original=(Get-Content (Join-Path $folder 'ui-checks.json') -Raw | ConvertFrom-Json)[0].State
-if($null -eq $original.lineThickness -or $null -eq $original.lineOpacity){throw 'A complete baseline from Redesign-Test is required'}
-$densityText=(Invoke-ProbeAdb shell wm density) -join "`n"
-$densityMatch=[regex]::Matches($densityText,'\d+') | Select-Object -Last 1
-$pixelScale=[int]$densityMatch.Value/160.0
+$original=(Get-CameraSnapshot).State
+$pixelScale=(Get-ProbeDisplay).DensityScale
 function Set-LineSlider([string]$Label,[int]$Value,[int]$Min,[int]$Max) {
  for($i=0;$i -lt 14;$i++) {
-  $node=@(Read-AppNodes) | Where-Object {$_.Description -eq $Label -and $_.Class -eq 'android.widget.SeekBar' -and $_.Visible -and $_.Bottom-$_.Top -ge 100 -and $_.Bottom -lt 2035} | Select-Object -First 1
-  if($node){Start-Sleep -Milliseconds 500;$padding=16*$pixelScale;$x=[int]($node.Left+$padding+($Value-$Min)/[double]($Max-$Min)*($node.Right-$node.Left-2*$padding));Invoke-ProbeAdb shell input tap $x ([int](($node.Top+$node.Bottom)/2));Start-Sleep -Milliseconds 300;return}
-  Invoke-ProbeAdb shell input swipe 850 1850 850 1250 400
+  $node=@(Read-AppNodes) | Where-Object {$_.Description -eq $Label -and $_.Class -match '(SeekBar|KitSlider)$' -and $_.Visible -and $_.Bottom-$_.Top -ge (36*$display.DensityScale) -and $_.Bottom -lt ($display.Height*0.87)} | Select-Object -First 1
+  if($node){Start-Sleep -Milliseconds 500;$padding=12*$pixelScale;$x=[int]($node.Left+$padding+($Value-$Min)/[double]($Max-$Min)*($node.Right-$node.Left-2*$padding));Invoke-ProbeAdb shell input tap $x ([int](($node.Top+$node.Bottom)/2));Start-Sleep -Milliseconds 300;return}
+  Invoke-ProbeAdb shell input swipe $swipeX $swipeBottom $swipeX $swipeMiddle 400
   Start-Sleep -Milliseconds 700
  }
  throw "Line slider missing: $Label"
@@ -38,3 +39,5 @@ try {
  Wait-CameraPreview | Out-Null
 } finally {$checks | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 (Join-Path $folder 'line-checks.json')}
 Write-Output "Passed $($checks.Count) line input checks"
+
+} @({ Stop-ProbeTest })

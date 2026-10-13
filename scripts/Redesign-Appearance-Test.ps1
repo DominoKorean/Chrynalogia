@@ -1,5 +1,9 @@
 param([string]$Serial)
 . "$PSScriptRoot\App-Ui.ps1" -Serial $Serial
+Start-ProbeTest
+Invoke-ProbeTest {
+$display=Get-ProbeDisplay
+$swipeX=[int]($display.Width*0.79);$swipeBottom=[int]($display.Height*0.79);$swipeMiddle=[int]($display.Height*0.53);$swipeTop=[int]($display.Height*0.34)
 $folder=Join-Path $script:ProjectRoot 'artifacts\redesign-checks'
 $checks=[System.Collections.Generic.List[object]]::new()
 function Choose-Appearance([string]$Label) {
@@ -56,3 +60,5 @@ try {
  Invoke-ProbeAdb shell rm -f /data/local/tmp/chrynalogia-appearance.xml
 }
 Write-Output "Passed $($checks.Count) appearance and session checks"
+
+} @({ Stop-ProbeTest })
