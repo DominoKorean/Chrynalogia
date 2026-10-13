@@ -28,6 +28,8 @@ public final class RenderChecks extends Instrumentation {
                 passed+=ImportChecks.run(c);
             } else if(suite.equals("session")) {
                 passed+=SessionChecks.run(c,this);
+            } else if(suite.equals("render-hardening")) {
+                passed+=RenderHardeningChecks.run(c,this);
             } else {
             GridSettings settings=new GridSettings(c);settings.hidden=false;settings.rotation=0;settings.flipX=false;settings.flipY=false;
             settings.color=Color.WHITE;settings.opacity=1;settings.thickness=1.2f;settings.outline=false;settings.multi=false;settings.save();
@@ -100,7 +102,11 @@ public final class RenderChecks extends Instrumentation {
     }
     private Bitmap render(Context c) {
         Bitmap result=Bitmap.createBitmap(400,600,Bitmap.Config.ARGB_8888);
-        runOnMainSync(()->{GridView v=new GridView(c);v.layout(0,0,400,600);v.draw(new Canvas(result));});return result;
+        java.util.concurrent.atomic.AtomicReference<GridView> holder=new java.util.concurrent.atomic.AtomicReference<>();
+        runOnMainSync(()->{holder.set(new GridView(c));holder.get().layout(0,0,400,600);});
+        try{RenderHardeningChecks.waitAssets(this);runOnMainSync(()->holder.get().draw(new Canvas(result)));}
+        catch(Exception error){throw new AssertionError(error);}finally{RenderHardeningChecks.detach(this,holder.get());}
+        return result;
     }
     private static int alpha(Bitmap b,int x,int y) {return Color.alpha(b.getPixel(x,y));}
     private static Rect visibleBounds(Bitmap b) {Rect bounds=new Rect();for(int y=0;y<b.getHeight();y++)for(int x=0;x<b.getWidth();x++)if(alpha(b,x,y)>100)bounds.union(x,y,x+1,y+1);return bounds;}

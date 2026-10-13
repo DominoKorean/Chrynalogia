@@ -13,6 +13,8 @@ final class CameraControls {
     private LinearLayout toolbar, menu, popup;
     private SettingsPanel settingsPanel;
     private boolean expanded;
+    private int builds;
+    int buildCount(){return builds;}
     private Rect window;
     private Rect header;
     private String layoutKey="";
@@ -61,7 +63,7 @@ final class CameraControls {
         p.softInputMode=WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE;p.setTitle(title);return p;
     }
     private void buildToolbar() {
-        if(window==null)return;remove(toolbar);remove(menu);menu=null;toolbar=Ui.column(Ui.context(service));
+        if(window==null)return;builds++;remove(toolbar);remove(menu);menu=null;toolbar=Ui.column(Ui.context(service));
         int openerSize=Ui.dp(service,36),size=Ui.dp(service,48);
         toolbar.setGravity(Gravity.CENTER);toolbar.setContentDescription(service.getString(expanded?R.string.close_grid_menu:R.string.open_grid_menu));toolbar.setFocusable(true);toolbar.setOnClickListener(v->{expanded=!expanded;buildToolbar();});
         ImageView logo=new ImageView(toolbar.getContext());logo.setImageResource(R.drawable.app_logo);logo.setScaleType(ImageView.ScaleType.FIT_CENTER);logo.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);

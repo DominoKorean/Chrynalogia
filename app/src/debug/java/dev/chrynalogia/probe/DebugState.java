@@ -35,7 +35,7 @@ final class DebugState {
         catch(Exception error){output.failWrite(stream);throw error;}
     }
     static JSONObject read(Context c) throws Exception {
-        JSONObject state=new JSONObject(Files.readString(backup(c).toPath()));
+        JSONObject state=new JSONObject(new String(Files.readAllBytes(backup(c).toPath()),StandardCharsets.UTF_8));
         if(state.getInt("boot")!=GridSettings.boot(c))throw new java.io.IOException("Test backup belongs to a different boot");
         return state;
     }

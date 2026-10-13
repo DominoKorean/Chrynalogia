@@ -15,9 +15,15 @@ import org.json.JSONObject;
 final class GridView extends View {
     private final Paint line=new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Matrix rabatmentTurn=new Matrix();
+    private final Path rabatmentPath=new Path();
     private final Map<String,Bitmap> bitmaps=new HashMap<>();
     private final Map<String,SVG> svgs=new HashMap<>();
-    private final Map<String,Picture> pictures=new HashMap<>();
+    private final Map<GridRenderKey,Picture> pictures=new HashMap<>();
+    private final Map<String,Path> paths=new HashMap<>();
+    private final Map<String,Long> loading=new HashMap<>();
+    private Set<String> wanted=Set.of();
+    private long loadGeneration;
+    private ImportAssets assets;
     private GridSettings settings;
     private final String previewId;
     private boolean firstFrame=true;
@@ -30,13 +36,28 @@ final class GridView extends View {
         applySettings();
     }
     void applySettings() {
-        settings=new GridSettings(getContext()); pictures.clear();
-        Set<String> known=new java.util.HashSet<>();
-        for(int i=0;i<settings.imports.length();i++) known.add(settings.imports.optJSONObject(i).optString("id"));
-        bitmaps.keySet().retainAll(known); svgs.keySet().retainAll(known);
+        GridSettings latest=new GridSettings(getContext());
+        if(settings==null||SettingsChange.classify(settings.changeState(),latest.changeState()).pictures()){pictures.clear();paths.clear();}
+        settings=latest;
+        wanted=previewId==null?Set.copyOf(settings.selected):Set.of(previewId);
+        bitmaps.keySet().retainAll(wanted);svgs.keySet().retainAll(wanted);loading.keySet().retainAll(wanted);
+        pictures.keySet().removeIf(key->!wanted.contains(key.id().replace("-outline","")));
+        if(assets==null)assets=new ImportAssets(getContext());
+        for(int i=0;i<settings.imports.length();i++){
+            ImportedGrid file=ImportedGrid.parse(settings.imports.optJSONObject(i));
+            if(file==null||!wanted.contains(file.id())||bitmaps.containsKey(file.id())||svgs.containsKey(file.id())||loading.containsKey(file.id()))continue;
+            long version=++loadGeneration;loading.put(file.id(),version);
+            assets.load(file,result->{
+                if(!java.util.Objects.equals(loading.get(file.id()),version)||!wanted.contains(file.id()))return;
+                if(result.error()!=null){ProbeLog.event(getContext(),"import_prepare_error","id",file.id(),"error",result.error().toString());return;}
+                loading.remove(file.id());if(result.bitmap()!=null)bitmaps.put(file.id(),result.bitmap());if(result.svg()!=null)svgs.put(file.id(),result.svg());invalidate();
+            });
+        }
         invalidate();
     }
-    @Override protected void onSizeChanged(int w,int h,int oldw,int oldh) { pictures.clear(); }
+    @Override protected void onAttachedToWindow(){super.onAttachedToWindow();if(assets==null)applySettings();}
+    @Override protected void onDetachedFromWindow(){if(assets!=null)assets.close();assets=null;loading.clear();bitmaps.clear();svgs.clear();pictures.clear();paths.clear();super.onDetachedFromWindow();}
+    @Override protected void onSizeChanged(int w,int h,int oldw,int oldh) { pictures.clear();paths.clear(); }
     @Override protected void onMeasure(int widthSpec,int heightSpec) {
         if(previewId!=null && MeasureSpec.getMode(widthSpec)==MeasureSpec.EXACTLY) {
             int w=MeasureSpec.getSize(widthSpec);setMeasuredDimension(w,Math.round(w*148f/218));
@@ -59,7 +80,7 @@ final class GridView extends View {
             Path path;
             if(id.equals("rabatment")) {
                 // Rebuilding on swapped axes cancels this grid's turn. Fit the path, keeping stroke width constant.
-                path=path(id,w,h);rabatmentTurn.setTranslate(-w/2,-h/2);rabatmentTurn.postRotate(rotation*90);
+                rabatmentPath.set(path(id,w,h));path=rabatmentPath;rabatmentTurn.setTranslate(-w/2,-h/2);rabatmentTurn.postRotate(rotation*90);
                 if(rotation%2!=0)rabatmentTurn.postScale(w/h,h/w);path.transform(rabatmentTurn);
             } else {
                 // Preserve the spiral's proportions, 45-degree guides and imported-grid behavior.
@@ -78,6 +99,8 @@ final class GridView extends View {
         }
     }
     private Path path(String id,float w,float h) {
+        String key=id+":"+w+":"+h+":"+settings.columns+":"+settings.rows;
+        Path cached=paths.get(key);if(cached!=null)return cached;
         Path path=new Path();
         if(id.equals("spiral")) {
             float rw=Math.min(w,h*1.618034f), rh=rw/1.618034f;
@@ -99,20 +122,21 @@ final class GridView extends View {
         } else for(GridGeometry.Segment s:GridGeometry.lines(id,w,h,settings.columns,settings.rows)) {
             path.moveTo(s.x1(),s.y1());path.lineTo(s.x2(),s.y2());
         }
-        return path;
+        paths.put(key,path);return path;
     }
     private void drawImport(Canvas canvas,String id,float w,float h,float stroke) {
         JSONObject data=null;
         for(int i=0;i<settings.imports.length();i++) if(id.equals(settings.imports.optJSONObject(i).optString("id"))) {data=settings.imports.optJSONObject(i);break;}
         if(data==null) return;
-        File file=new File(getContext().getFilesDir(),"grids/"+id+data.optString("extension"));
+        if(data.optString("extension").equals(".svg")?!svgs.containsKey(id):!bitmaps.containsKey(id))return;
+        GridRenderKey key=new GridRenderKey(id,(int)w,(int)h,settings.rotation,settings.columns,settings.rows,stroke,settings.keepAspect,settings.outline);
+        GridRenderKey edgeKey=new GridRenderKey(id+"-outline",(int)w,(int)h,settings.rotation,settings.columns,settings.rows,stroke,settings.keepAspect,settings.outline);
         try {
             line.setStyle(Paint.Style.FILL);line.setColor(settings.color);line.setAlpha(Math.round(settings.opacity*255));
             line.setColorFilter(new PorterDuffColorFilter(settings.color,PorterDuff.Mode.SRC_IN));
             if(data.optString("extension").equals(".svg")) {
                 SVG svg=svgs.get(id);
-                if(svg==null) {SVG.setInternalEntitiesEnabled(false);try(java.io.FileInputStream input=new java.io.FileInputStream(file)) {svg=SVG.getFromInputStream(input);}svg.setDocumentWidth("100%");svg.setDocumentHeight("100%");svgs.put(id,svg);}
-                Picture picture=pictures.get(id);
+                Picture picture=pictures.get(key);
                 if(picture==null) {
                     RectF box=svg.getDocumentViewBox();
                     float basis=box==null?Math.max(w,h):Math.max(box.width(),box.height());
@@ -121,16 +145,16 @@ final class GridView extends View {
                         .preserveAspectRatio(settings.keepAspect?PreserveAspectRatio.LETTERBOX:PreserveAspectRatio.STRETCH)
                         .css("* { stroke: white !important; stroke-width: "+svgWidth+" !important; fill: none !important; }");
                     picture=new Picture(); Canvas recording=picture.beginRecording((int)w,(int)h);
-                    svg.renderToCanvas(recording,options);picture.endRecording();pictures.put(id,picture);
+                    svg.renderToCanvas(recording,options);picture.endRecording();pictures.put(key,picture);
                 }
                 if(settings.outline) {
-                    Picture border=pictures.get(id+"-outline");
+                    Picture border=pictures.get(edgeKey);
                     if(border==null) {
                         RectF box=svg.getDocumentViewBox();float basis=box==null?Math.max(w,h):Math.max(box.width(),box.height());
                         RenderOptions options=RenderOptions.create().viewPort(0,0,w,h)
                             .preserveAspectRatio(settings.keepAspect?PreserveAspectRatio.LETTERBOX:PreserveAspectRatio.STRETCH)
                             .css("* { stroke: white !important; stroke-width: "+((stroke+1.3f*getResources().getDisplayMetrics().density)*basis/Math.max(w,h))+" !important; fill: none !important; }");
-                        border=new Picture();Canvas recording=border.beginRecording((int)w,(int)h);svg.renderToCanvas(recording,options);border.endRecording();pictures.put(id+"-outline",border);
+                        border=new Picture();Canvas recording=border.beginRecording((int)w,(int)h);svg.renderToCanvas(recording,options);border.endRecording();pictures.put(edgeKey,border);
                     }
                     line.setColorFilter(new PorterDuffColorFilter(OutlineColor.forLine(settings.color),PorterDuff.Mode.SRC_IN));
                     int layer=canvas.saveLayer(0,0,w,h,line);canvas.drawPicture(border);canvas.restoreToCount(layer);
@@ -139,7 +163,6 @@ final class GridView extends View {
                 int layer=canvas.saveLayer(0,0,w,h,line);canvas.drawPicture(picture);canvas.restoreToCount(layer);
             } else {
                 Bitmap bitmap=bitmaps.get(id);
-                if(bitmap==null) {bitmap=BitmapFactory.decodeFile(file.getPath());if(bitmap==null)return;bitmaps.put(id,bitmap);}
                 RectF destination=new RectF(0,0,w,h);
                 if(settings.keepAspect) {
                     float scale=Math.min(w/bitmap.getWidth(),h/bitmap.getHeight());

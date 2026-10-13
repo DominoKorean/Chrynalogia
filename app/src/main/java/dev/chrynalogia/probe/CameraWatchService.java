@@ -26,6 +26,10 @@ public final class CameraWatchService extends AccessibilityService {
     private GridView grid;
     private CameraControls controls;
     private GridSettings settings;
+    private FrameRefresh frameRefresh;
+    private String appearanceKey="";
+    private String lastStatus;
+    private int reconcileCount;
     private android.content.SharedPreferences.OnSharedPreferenceChangeListener preferenceListener;
     private Rect lastBounds;
     private Rect debugBounds;
@@ -52,6 +56,8 @@ public final class CameraWatchService extends AccessibilityService {
         CameraConnection.attach(this);
         manager = getSystemService(WindowManager.class);
         settings = new GridSettings(this);
+        frameRefresh=new FrameRefresh(new AndroidFrameScheduler(),mask->applyPendingSettings());
+        appearanceKey=appearance();
         controls = new CameraControls(this, manager);
         paused = !settings.active(this);
         preferenceListener = (prefs, key) -> {
@@ -124,6 +130,7 @@ public final class CameraWatchService extends AccessibilityService {
     }
 
     private void reconcile(String trigger) {
+        reconcileCount++;
         try {
             CameraWindow focused = focusedWindow();
             boolean ownPopupRoot = controls != null && controls.popupOpen() && focused.root() != null
@@ -225,20 +232,25 @@ public final class CameraWatchService extends AccessibilityService {
         ProbeLog.event(this, "pause_changed", "paused", value);
         reconcile("pause-command");
     }
-    void refreshSettings() {
-        if (settings == null) return;
-        settings.reload(); paused = !settings.active(this);
-        handler.removeCallbacks(poll);
-        if (!paused) handler.postDelayed(poll,1000);
-        if (grid != null) grid.applySettings();
-        if (controls != null) controls.refresh();
-        reconcile("settings-changed"); writeStatus();
+    private String appearance(){return AppAppearance.theme(this)+":"+AppAppearance.language(this)+":"+AppAppearance.dark(this);}
+    void refreshSettings(){if(frameRefresh!=null)frameRefresh.request(1);}
+    private void applyPendingSettings() {
+        if(settings==null)return;
+        GridSettings latest=new GridSettings(this);SettingsChange change=SettingsChange.classify(settings.changeState(),latest.changeState());
+        boolean nextPaused=!latest.active(this),sessionChanged=nextPaused!=paused||change.session();
+        boolean appearanceChanged=!appearanceKey.equals(appearance());appearanceKey=appearance();settings=latest;paused=nextPaused;
+        if(sessionChanged){handler.removeCallbacks(poll);if(!paused)handler.postDelayed(poll,1000);}
+        if(grid!=null&&change.render())grid.applySettings();
+        if(controls!=null&&(change.menu()||appearanceChanged))controls.refresh();
+        if(sessionChanged||appearanceChanged)reconcile("settings-changed");
+        writeStatus();
     }
     void setDebugBounds(Rect bounds) { debugBounds = bounds; reconcile("bounds-command"); }
     String shortStatus() { return "상태: " + reason + "\n영역: " + locator + "\n비율: " + previewRatio + " · 모드: " + cameraMode; }
     String diagnosticStatus() {
         try {
             return new JSONObject().put("connected", true).put("paused", paused)
+                .put("reconcileCount",reconcileCount).put("menuBuildCount",controls==null?0:controls.buildCount()).put("assetBuildCount",ImportAssets.buildCount()).put("pendingAssetLoads",ImportAssets.pendingCount())
                 .put("foreground", foreground).put("overlayAttached", grid != null)
                 .put("reason", reason).put("locator", locator)
                 .put("previewRatio", previewRatio).put("cameraMode", cameraMode)
@@ -266,7 +278,8 @@ public final class CameraWatchService extends AccessibilityService {
                 .toString(2);
         } catch (Exception error) { return error.toString(); }
     }
-    private void writeStatus() { ProbeLog.write(this, "probe-status.json", diagnosticStatus()); }
+    private void writeStatus(){writeStatus(false);}
+    private void writeStatus(boolean force){String json=diagnosticStatus();if(force||!json.equals(lastStatus)){ProbeLog.write(this,"probe-status.json",json);lastStatus=json;}}
 
     String dumpCameraTree() {
         CameraWindow focused = focusedWindow();
@@ -287,7 +300,7 @@ public final class CameraWatchService extends AccessibilityService {
     }
     void captureDiagnostics() {
         reconcile("diagnostic-command");
-        writeStatus();
+        writeStatus(true);
         ProbeLog.write(this, "camera-ui.txt", dumpCameraTree());
         StringBuilder own = new StringBuilder("Chrynalogia UI\n");
         for (AccessibilityWindowInfo window : MainActivity.foreground() ? getWindows() : java.util.List.<AccessibilityWindowInfo>of()) {
@@ -315,6 +328,7 @@ public final class CameraWatchService extends AccessibilityService {
     @Override public void onDestroy() { cleanup(); super.onDestroy(); }
     private void cleanup() {
         if (settings != null && preferenceListener != null) settings.prefs.unregisterOnSharedPreferenceChangeListener(preferenceListener);
+        if(frameRefresh!=null)frameRefresh.cancel();
         handler.removeCallbacksAndMessages(null);
         hide("service-disconnected");
         CameraConnection.detach(this);

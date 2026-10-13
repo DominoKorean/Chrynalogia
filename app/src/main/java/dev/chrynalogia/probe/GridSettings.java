@@ -58,6 +58,7 @@ final class GridSettings {
         v.put("selected",new LinkedHashSet<>(selected));v.put("imports",imports.toString());return v;
     }
     void save(){SettingsStore.saveChanges(this);}
+    SettingsChange.State changeState(){return new SettingsChange.State(color,opacity,thickness,outline,hidden,Set.copyOf(selected),rotation,columns,rows,keepAspect,allowStop,runMode);}
     void select(String id,boolean enabled){SettingsStore.update(context,state->{if(!state.multi&&enabled)state.selected.clear();if(enabled)state.selected.add(id);else state.selected.remove(id);});reload();}
     boolean active(Context c){return SessionController.active(c);}
     boolean requested(Context c){return SessionPolicy.requested(SessionController.input(c));}
