@@ -14,12 +14,12 @@ public final class DebugReceiver extends BroadcastReceiver {
                 if("backup-state".equals(requested)){DebugState.save(context);setResultCode(0);setResultData("State backed up");}
                 else {
                     org.json.JSONObject state=DebugState.read(context);
-                    if(!state.getBoolean("running")&&ManualSessionService.running) {
+                    if(!state.getBoolean("running")&&SessionController.ready()) {
                         context.stopService(new Intent(context,ManualSessionService.class));
                         PendingResult result=goAsync();android.os.Handler handler=new android.os.Handler(android.os.Looper.getMainLooper());
                         handler.post(new Runnable(){int attempts;public void run(){
-                            if(ManualSessionService.running&&attempts++<50){handler.postDelayed(this,100);return;}
-                            try{if(ManualSessionService.running)throw new java.io.IOException("Session did not stop");DebugState.restore(context,state);result.setResultCode(0);result.setResultData("State restored");}
+                            if(SessionController.ready()&&attempts++<50){handler.postDelayed(this,100);return;}
+                            try{if(SessionController.ready())throw new java.io.IOException("Session did not stop");DebugState.restore(context,state);result.setResultCode(0);result.setResultData("State restored");}
                             catch(Exception error){result.setResultCode(3);result.setResultData(error.toString());}finally{result.finish();}
                         }});
                     } else {DebugState.restore(context,state);setResultCode(0);setResultData("State restored");}
@@ -27,7 +27,7 @@ public final class DebugReceiver extends BroadcastReceiver {
             }catch(Exception error){setResultCode(3);setResultData(error.toString());}
             return;
         }
-        CameraWatchService service = CameraWatchService.instance;
+        CameraWatchService service = CameraConnection.service();
         if (service == null) {
             ProbeLog.write(context, "probe-status.json", "{\"connected\":false,\"overlayAttached\":false}");
             setResultCode(1); setResultData("Accessibility service is not connected"); return;

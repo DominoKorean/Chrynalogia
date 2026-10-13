@@ -19,7 +19,6 @@ public final class RenderChecks extends Instrumentation {
     @Override public void onStart() {
         Context c=getTargetContext();SharedPreferences prefs=c.getSharedPreferences("probe",Context.MODE_PRIVATE);
         Map<String,?> original=new HashMap<>(prefs.getAll());
-        boolean originalRunning=ManualSessionService.running;
         Bundle result=new Bundle();
         int resultCode=-1;
         try {
@@ -27,6 +26,8 @@ public final class RenderChecks extends Instrumentation {
                 passed+=SettingsChecks.run(c);
             } else if(suite.equals("files")) {
                 passed+=ImportChecks.run(c);
+            } else if(suite.equals("session")) {
+                passed+=SessionChecks.run(c,this);
             } else {
             GridSettings settings=new GridSettings(c);settings.hidden=false;settings.rotation=0;settings.flipX=false;settings.flipY=false;
             settings.color=Color.WHITE;settings.opacity=1;settings.thickness=1.2f;settings.outline=false;settings.multi=false;settings.save();
@@ -74,10 +75,9 @@ public final class RenderChecks extends Instrumentation {
             reject(c,"invalid.png","not an image".getBytes(StandardCharsets.UTF_8));
             reject(c,"entities.svg","<!DOCTYPE svg [<!ENTITY x 'x'>]><svg xmlns='http://www.w3.org/2000/svg'/>".getBytes(StandardCharsets.UTF_8));
             reject(c,"oversize.svg",new byte[GridImporter.MAX_BYTES+1]);
-            settings.runMode="manual";settings.onboarding=true;settings.save();settings.activate(c);ManualSessionService.running=false;
-            check(!settings.active(c),"Manual mode never runs without its foreground notification service");
-            ManualSessionService.running=true;check(settings.active(c),"Manual session active in current boot");
-            prefs.edit().putInt("sessionBoot",GridSettings.boot(c)-1).commit();check(!settings.active(c),"Manual session expires across boot count");
+            check(!SessionPolicy.active(new SessionPolicy.Input(true,"manual",false,3,3,true,false)),"Manual requires foreground readiness");
+            check(SessionPolicy.active(new SessionPolicy.Input(true,"manual",false,3,3,true,true)),"Manual ready in current boot");
+            check(!SessionPolicy.active(new SessionPolicy.Input(true,"manual",false,2,3,true,true)),"Manual expires across reboot");
             }
             result.putString("stream","PASS: "+passed+" "+suite+" checks\n");
         } catch(Throwable error) {resultCode=0;result.putString("stream","FAIL after "+passed+" checks: "+error+"\n");}
@@ -89,7 +89,7 @@ public final class RenderChecks extends Instrumentation {
                 else if(v instanceof Integer n)edit.putInt(k,n);else if(v instanceof Float n)edit.putFloat(k,n);
                 else if(v instanceof Long n)edit.putLong(k,n);else if(v instanceof Set<?> set){Set<String> strings=new HashSet<>();for(Object s:set)strings.add((String)s);edit.putStringSet(k,strings);}
             }
-            edit.commit();ManualSessionService.running=originalRunning;for(File file:created)file.delete();
+            edit.commit();for(File file:created)file.delete();
         }
         finish(resultCode,result);
     }

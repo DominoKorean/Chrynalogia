@@ -7,13 +7,12 @@ import android.os.IBinder;
 
 /** Foreground lifetime for a user-started manual session; never starts at boot. */
 public final class ManualSessionService extends Service {
-    static boolean running;
     private static final int ID=91;
-    @Override public void onCreate() {super.onCreate();running=true;}
+    @Override public void onCreate() {super.onCreate();}
     @Override public int onStartCommand(Intent intent,int flags,int startId) {
         GridSettings settings=new GridSettings(this);
         if(intent!=null && "stop".equals(intent.getAction())) {
-            settings.stop();if(CameraWatchService.instance!=null)CameraWatchService.instance.refreshSettings();
+            SessionController.stop(this);
             stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();return START_NOT_STICKY;
         }
         if(!settings.runMode.equals("manual") || !settings.requested(this)) {stopSelf();return START_NOT_STICKY;}
@@ -26,14 +25,14 @@ public final class ManualSessionService extends Service {
             .setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true)
             .addAction(new Notification.Action.Builder(null,this.getString(R.string.stop),stop).build()).build();
         startForeground(ID,notification,ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
-        if(CameraWatchService.instance!=null)CameraWatchService.instance.refreshSettings();
+        SessionController.foregroundReady(this,true);
         return START_NOT_STICKY;
     }
     @Override public void onDestroy() {
-        running=false;
+        SessionController.foregroundReady(this,false);
         // In manual mode a killed foreground session must not leave an invisible active session.
         GridSettings settings=new GridSettings(this);
-        if(settings.runMode.equals("manual")) {settings.stop();if(CameraWatchService.instance!=null)CameraWatchService.instance.refreshSettings();}
+        if(settings.runMode.equals("manual")) {settings.stop();CameraConnection.requestRefresh();}
         super.onDestroy();
     }
     @Override public void onConfigurationChanged(android.content.res.Configuration configuration) {

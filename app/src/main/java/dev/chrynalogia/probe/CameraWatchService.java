@@ -21,7 +21,6 @@ import java.util.List;
 
 public final class CameraWatchService extends AccessibilityService {
     static final String CAMERA_PACKAGE = "com.sec.android.app.camera";
-    static CameraWatchService instance;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private WindowManager manager;
     private GridView grid;
@@ -50,7 +49,7 @@ public final class CameraWatchService extends AccessibilityService {
     };
 
     @Override protected void onServiceConnected() {
-        instance = this;
+        CameraConnection.attach(this);
         manager = getSystemService(WindowManager.class);
         settings = new GridSettings(this);
         controls = new CameraControls(this, manager);
@@ -221,7 +220,7 @@ public final class CameraWatchService extends AccessibilityService {
 
     void setPaused(boolean value) {
         if (settings == null) settings = new GridSettings(this);
-        if (value) settings.stop(); else settings.activate(this);
+        if (value) SessionController.stop(this); else SessionController.requestStart(this);
         paused = !settings.active(this);
         ProbeLog.event(this, "pause_changed", "paused", value);
         reconcile("pause-command");
@@ -318,7 +317,7 @@ public final class CameraWatchService extends AccessibilityService {
         if (settings != null && preferenceListener != null) settings.prefs.unregisterOnSharedPreferenceChangeListener(preferenceListener);
         handler.removeCallbacksAndMessages(null);
         hide("service-disconnected");
-        if (instance == this) instance = null;
+        CameraConnection.detach(this);
         ProbeLog.write(this, "probe-status.json", "{\"connected\":false,\"overlayAttached\":false}");
     }
 }

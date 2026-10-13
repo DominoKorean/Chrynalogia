@@ -28,7 +28,7 @@ final class DebugState {
         JSONArray files=new JSONArray();File[] inventory=new File(c.getFilesDir(),"grids").listFiles();
         if(inventory!=null)for(File file:inventory)files.put(file.getName());
         JSONObject state=new JSONObject().put("boot",GridSettings.boot(c)).put("prefs",values).put("files",files)
-            .put("language",AppAppearance.language(c)).put("running",ManualSessionService.running);
+            .put("language",AppAppearance.language(c)).put("running",SessionController.ready());
         android.util.AtomicFile output=new android.util.AtomicFile(backup(c));
         java.io.FileOutputStream stream=output.startWrite();
         try {stream.write(state.toString().getBytes(StandardCharsets.UTF_8));output.finishWrite(stream);}
@@ -58,6 +58,6 @@ final class DebugState {
             if(c.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)throw new java.io.IOException("Notification permission missing for original session");
             c.startForegroundService(new Intent(c,ManualSessionService.class));
         }
-        if(CameraWatchService.instance!=null)CameraWatchService.instance.refreshSettings();
+        CameraConnection.requestRefresh();
     }
 }

@@ -59,11 +59,8 @@ final class GridSettings {
     }
     void save(){SettingsStore.saveChanges(this);}
     void select(String id,boolean enabled){SettingsStore.update(context,state->{if(!state.multi&&enabled)state.selected.clear();if(enabled)state.selected.add(id);else state.selected.remove(id);});reload();}
-    boolean active(Context context) {
-        if (!onboarding || bool(prefs.getAll(),"paused",false)) return false;
-        return !runMode.equals("manual") || (requested(context) && ManualSessionService.running);
-    }
-    boolean requested(Context context) {return onboarding && !bool(prefs.getAll(),"paused",false) && boot(context)>=0&&integer(prefs.getAll(),"sessionBoot",-1)==boot(context);}
+    boolean active(Context c){return SessionController.active(c);}
+    boolean requested(Context c){return SessionPolicy.requested(SessionController.input(c));}
     static int boot(Context context) {
         return Settings.Global.getInt(context.getContentResolver(), Settings.Global.BOOT_COUNT, -2);
     }

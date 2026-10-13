@@ -179,9 +179,9 @@ final class SettingsPanel extends FrameLayout {
         if(settings.runMode.equals("manual")) {Ui.note(run,s(settings.active(c)?R.string.manual_active:R.string.manual_stopped));Ui.addButton(run,s(settings.active(c)?R.string.stop_session:R.string.start_session),settings.active(c)?actions::stop:actions::startSession);}
         Ui.toggle(run,s(R.string.allow_stop),settings.allowStop,on->{settings.allowStop=on;changed();});Ui.addButton(run,s(R.string.stop_background),actions::stop);
         LinearLayout permissions=Ui.section(content);
-        Ui.note(permissions,s(CameraWatchService.instance==null?R.string.access_needed:R.string.access_connected));Ui.note(permissions,s(Settings.canDrawOverlays(c)?R.string.overlay_allowed:R.string.overlay_needed));
+        Ui.note(permissions,s(!CameraConnection.connected()?R.string.access_needed:R.string.access_connected));Ui.note(permissions,s(Settings.canDrawOverlays(c)?R.string.overlay_allowed:R.string.overlay_needed));
         if(!Settings.canDrawOverlays(c))Ui.addButton(permissions,s(R.string.allow_overlay),()->actions.permissions(true));
-        if(CameraWatchService.instance==null)Ui.addButton(permissions,s(R.string.allow_access),()->actions.permissions(false));
+        if(!CameraConnection.connected())Ui.addButton(permissions,s(R.string.allow_access),()->actions.permissions(false));
         Ui.note(permissions,s(R.string.welcome_privacy));
         for(LinearLayout group:new LinearLayout[]{appearance,run,permissions}) {
             LinearLayout.LayoutParams p=(LinearLayout.LayoutParams)group.getLayoutParams();p.setMargins(Ui.dp(c,10),Ui.dp(c,10),Ui.dp(c,10),Ui.dp(c,10));group.setLayoutParams(p);

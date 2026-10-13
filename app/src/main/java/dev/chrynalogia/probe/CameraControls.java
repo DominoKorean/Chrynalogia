@@ -16,6 +16,7 @@ final class CameraControls {
     private Rect window;
     private Rect header;
     private String layoutKey="";
+    private final android.os.Handler uiHandler=new android.os.Handler(android.os.Looper.getMainLooper());
 
     CameraControls(CameraWatchService service,WindowManager manager) {this.service=service;this.manager=manager;}
     boolean popupOpen() {return popup!=null;}
@@ -97,16 +98,16 @@ final class CameraControls {
             public void changed(){service.refreshSettings();}
             public void importGrid(){closePopup();Intent i=new Intent(service,ImportActivity.class).putExtra("returnCamera",true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);service.startActivity(i);}
             public void modeChanged(String mode){
-                GridSettings s=new GridSettings(service);s.activate(service);
+                GridSettings s=new GridSettings(service);
                 if(mode.equals("manual")) {
                     // The activity handles the runtime notification permission before creating a session.
                     closePopup();service.startActivity(new Intent(service,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                } else service.stopService(new Intent(service,ManualSessionService.class));
+                } else SessionController.changeMode(service,mode);
                 service.refreshSettings();
             }
             public void stop(){service.setPaused(true);service.stopService(new Intent(service,ManualSessionService.class));}
             public void startSession(){closePopup();service.startActivity(new Intent(service,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));}
-            public void appearanceChanged(){closePopup();service.refreshSettings();new android.os.Handler(service.getMainLooper()).postDelayed(()->{if(toolbar!=null)openPopup();},400);}
+            public void appearanceChanged(){closePopup();service.refreshSettings();uiHandler.postDelayed(()->{if(toolbar!=null)openPopup();},400);}
             public void permissions(boolean overlay){closePopup();service.startActivity(new Intent(service,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));}
         },true);popup.addView(settingsPanel,new LinearLayout.LayoutParams(-1,0,1));
         popup.setFocusableInTouchMode(true);
@@ -118,8 +119,8 @@ final class CameraControls {
         if(h<Ui.dp(service,140)) {y=window.top+bars.top+Ui.dp(service,4);h=window.height()-bars.top-bars.bottom-Ui.dp(service,8);}
         manager.addView(popup,params(w,h,x,y,true,"Chrynalogia-CameraSettings"));popup.requestFocus();
     }
-    void closePopup() {if(settingsPanel!=null)settingsPanel.dismissChoices();settingsPanel=null;remove(popup);popup=null;}
-    void hide() {closePopup();remove(toolbar);remove(menu);toolbar=null;menu=null;expanded=false;layoutKey="";}
+    void closePopup() {uiHandler.removeCallbacksAndMessages(null);if(settingsPanel!=null)settingsPanel.dismissChoices();settingsPanel=null;remove(popup);popup=null;}
+    void hide() {uiHandler.removeCallbacksAndMessages(null);closePopup();remove(toolbar);remove(menu);toolbar=null;menu=null;expanded=false;layoutKey="";}
     private void remove(View v) {if(v!=null)try{manager.removeViewImmediate(v);}catch(IllegalArgumentException ignored){}}
 
 }

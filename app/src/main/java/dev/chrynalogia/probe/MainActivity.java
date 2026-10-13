@@ -16,11 +16,13 @@ public final class MainActivity extends Activity {
     static boolean foreground(){return visibleActivity!=null;}
     private GridSettings settings;
     private boolean pendingManual;
+    private final android.os.Handler uiHandler=new android.os.Handler(android.os.Looper.getMainLooper());
+    private SettingsPanel panel;
     @Override public void onCreate(Bundle state) {
         setTheme(AppAppearance.dark(this)?R.style.AppDark:R.style.AppLight);
         super.onCreate(state);settings=new GridSettings(this);
         pendingManual=state!=null&&state.getBoolean("pendingManual",false);
-        if(settings.onboarding&&getLastNonConfigurationInstance()==null) {
+        if(settings.onboarding&&state==null&&getLastNonConfigurationInstance()==null) {
             settings.activate(this);if(settings.runMode.equals("manual"))startManual();else refreshService();
         }
         render();
@@ -30,7 +32,7 @@ public final class MainActivity extends Activity {
         if(settings.onboarding){settings.activate(this);if(settings.runMode.equals("manual"))startManual();else refreshService();}render();
     }
     private void render() {
-        settings.reload();LinearLayout root=Ui.column(this);root.setBackgroundColor(Ui.bg(this));
+        if(panel!=null)panel.dismissChoices();settings.reload();LinearLayout root=Ui.column(this);root.setBackgroundColor(Ui.bg(this));
         root.setOnApplyWindowInsetsListener((v,insets)->{android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars());v.setPadding(bars.left,bars.top,bars.right,bars.bottom);return insets;});
         if(!settings.onboarding) {
             ScrollView scroll=new ScrollView(this);LinearLayout welcome=Ui.column(this);welcome.setPadding(0,Ui.dp(this,48),0,Ui.dp(this,24));scroll.addView(welcome);root.addView(scroll);
@@ -38,22 +40,22 @@ public final class MainActivity extends Activity {
             Ui.title(welcome,"Chrynalogia");Ui.note(welcome,getString(R.string.welcome_intro));Ui.title(welcome,getString(R.string.welcome_mode));
             Ui.note(welcome,getString(R.string.welcome_disclosure));Ui.note(welcome,getString(R.string.welcome_privacy));
             Ui.addButton(welcome,getString(R.string.always),()->chooseMode("always"));Ui.addButton(welcome,getString(R.string.choose_manual),()->chooseMode("manual"));
-        } else root.addView(new SettingsPanel(this,new SettingsPanel.Actions() {
+        } else {panel=new SettingsPanel(this,new SettingsPanel.Actions() {
             public void changed(){refreshService();}
             public void importGrid(){startActivity(new Intent(MainActivity.this,ImportActivity.class));}
-            public void modeChanged(String mode){settings.reload();settings.activate(MainActivity.this);if(mode.equals("manual"))startManual();else stopService(new Intent(MainActivity.this,ManualSessionService.class));refreshService();render();}
+            public void modeChanged(String mode){pendingManual=false;SessionController.changeMode(MainActivity.this,mode);settings.reload();if(mode.equals("manual"))startManual();render();}
             public void stop(){stopSession();render();}
             public void startSession(){settings.activate(MainActivity.this);startManual();render();}
             public void openCamera(){MainActivity.this.openCamera();}
-            public void appearanceChanged(){refreshService();new android.os.Handler(getMainLooper()).postDelayed(()->{if(!isFinishing()&&!isDestroyed())recreate();},200);}
+            public void appearanceChanged(){refreshService();uiHandler.postDelayed(()->{if(!isFinishing()&&!isDestroyed())recreate();},200);}
             public void permissions(boolean overlay){startActivity(overlay?new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,Uri.parse("package:"+getPackageName())):new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));}
-        }),new LinearLayout.LayoutParams(-1,0,1));
+        });root.addView(panel,new LinearLayout.LayoutParams(-1,0,1));}
         setContentView(root);
         int bars=WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS|WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
         getWindow().getInsetsController().setSystemBarsAppearance(AppAppearance.dark(this)?0:bars,bars);
     }
     private void openCamera() {
-        if(!Settings.canDrawOverlays(this)||CameraWatchService.instance==null){Toast.makeText(this,R.string.permissions_first,Toast.LENGTH_LONG).show();return;}
+        if(!Settings.canDrawOverlays(this)||!CameraConnection.connected()){Toast.makeText(this,R.string.permissions_first,Toast.LENGTH_LONG).show();return;}
         settings.activate(this);if(settings.runMode.equals("manual")&&!startManual())return;refreshService();
         Intent camera=getPackageManager().getLaunchIntentForPackage(CameraWatchService.CAMERA_PACKAGE);
         if(camera!=null)startActivity(camera);else Toast.makeText(this,R.string.camera_missing,Toast.LENGTH_LONG).show();
@@ -61,20 +63,20 @@ public final class MainActivity extends Activity {
     private void chooseMode(String mode) {settings.runMode=mode;settings.onboarding=true;settings.save();settings.activate(this);if(mode.equals("manual"))startManual();refreshService();render();}
     private boolean startManual() {
         if(pendingManual)return false;
-        if(checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED){pendingManual=true;requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},10);return false;}
-        startForegroundService(new Intent(this,ManualSessionService.class));refreshService();
-        new android.os.Handler(getMainLooper()).postDelayed(()->{if(!isFinishing()&&!isDestroyed())render();},250);return true;
+        if(checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED){SessionController.requestStart(this);pendingManual=true;requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},10);return false;}
+        if(!SessionController.requestStart(this))return false;
+        uiHandler.postDelayed(()->{if(!isFinishing()&&!isDestroyed())render();},250);return true;
     }
     @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] results) {
         super.onRequestPermissionsResult(request,permissions,results);
-        if(request==10&&pendingManual){pendingManual=false;settings.reload();if(results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED&&settings.runMode.equals("manual")&&settings.requested(this))startManual();else{settings.stop();refreshService();Toast.makeText(this,R.string.notification_required,Toast.LENGTH_LONG).show();}render();}
+        if(request==10&&pendingManual){pendingManual=false;settings.reload();if(results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED&&settings.runMode.equals("manual")&&settings.requested(this))startManual();else{SessionController.stop(this);Toast.makeText(this,R.string.notification_required,Toast.LENGTH_LONG).show();}render();}
     }
-    private void stopSession(){settings.stop();stopService(new Intent(this,ManualSessionService.class));refreshService();}
-    private void refreshService(){if(CameraWatchService.instance!=null)CameraWatchService.instance.refreshSettings();}
+    private void stopSession(){pendingManual=false;SessionController.stop(this);}
+    private void refreshService(){CameraConnection.requestRefresh();}
     @Override protected void onSaveInstanceState(Bundle state){state.putBoolean("pendingManual",pendingManual);super.onSaveInstanceState(state);}
     @Override public Object onRetainNonConfigurationInstance(){return Boolean.TRUE;}
     @Override protected void onRestart(){super.onRestart();settings.reload();if(settings.onboarding&&settings.runMode.equals("manual")){settings.activate(this);startManual();}}
     @Override protected void onResume(){super.onResume();visibleActivity=this;if(settings!=null)render();}
     @Override protected void onPause(){if(visibleActivity==this)visibleActivity=null;super.onPause();}
-    @Override protected void onDestroy(){if(visibleActivity==this)visibleActivity=null;super.onDestroy();}
+    @Override protected void onDestroy(){uiHandler.removeCallbacksAndMessages(null);if(panel!=null)panel.dismissChoices();if(visibleActivity==this)visibleActivity=null;super.onDestroy();}
 }

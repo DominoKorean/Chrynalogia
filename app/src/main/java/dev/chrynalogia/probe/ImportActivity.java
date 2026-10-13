@@ -30,7 +30,7 @@ public final class ImportActivity extends Activity {
         },"grid-import").start();
     }
     private void done() {
-        if(CameraWatchService.instance!=null)CameraWatchService.instance.refreshSettings();
+        CameraConnection.requestRefresh();
         if(returnCamera) {
             Intent camera=getPackageManager().getLaunchIntentForPackage(CameraWatchService.CAMERA_PACKAGE);
             if(camera!=null)startActivity(camera);
