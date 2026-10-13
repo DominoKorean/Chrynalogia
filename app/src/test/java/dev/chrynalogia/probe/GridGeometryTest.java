@@ -4,6 +4,10 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class GridGeometryTest {
+    @Test public void retiredSingleGoldenRatioIsUnavailableToConsumers() {
+        assertFalse(java.util.Arrays.asList(GridGeometry.IDS).contains("golden_ratio"));
+        assertTrue(GridGeometry.lines("golden_ratio",720,1280,3,3).isEmpty());
+    }
     @Test public void triangleAuxiliariesArePerpendicularOnTallAndWidePreviews() {
         for(float[] dimensions:new float[][]{{1080,1440},{1920,1080},{720,720}}) {
             float w=dimensions[0],h=dimensions[1];

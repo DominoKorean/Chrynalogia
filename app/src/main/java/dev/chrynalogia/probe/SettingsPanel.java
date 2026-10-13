@@ -45,12 +45,13 @@ final class SettingsPanel extends FrameLayout {
     SettingsPanel(Context c,Actions actions) {this(c,actions,false);}
     SettingsPanel(Context c,Actions actions,boolean compact) {
         super(Ui.context(c));this.actions=actions;this.compact=compact;c=getContext();settings=new GridSettings(c);
-        pageKey=compact?"cameraTab":"appTab";page=Math.max(0,Math.min(2,settings.prefs.getInt(pageKey,0)));
+        pageKey=compact?"cameraTab":"appTab";page=Math.max(0,Math.min(2,tabIndex(settings.prefs.getAll().get(pageKey))));
         setBackgroundColor(Ui.bg(c));scroll=new ScrollView(c);scroll.setFillViewport(true);scroll.setClipToPadding(false);
         content=Ui.column(c);content.setPadding(0,0,0,Ui.dp(c,108));scroll.addView(content);addView(scroll,new FrameLayout.LayoutParams(-1,-1));
         build();
         if(compact||page!=0)collapseHeader();
     }
+    private static int tabIndex(Object value){return value instanceof Integer n?n:0;}
     private String s(int id) {return getContext().getString(id);}
     private void changed() {SettingsStore.saveChanges(settings);actions.changed();for(GridView v:previews)v.applySettings();}
     private void build() {
@@ -75,7 +76,7 @@ final class SettingsPanel extends FrameLayout {
     }
     private void collapseHeader() {scroll.post(()->scroll.scrollTo(0,expandedHeader==null?0:expandedHeader.getHeight()));}
     private void grids() {
-        Context c=getContext();heading("Chrynalogia",!compact);
+        Context c=getContext();heading(s(R.string.app_name),!compact);
         if(!compact) {
             LinearLayout camera=new LinearLayout(c);camera.setGravity(Gravity.END);camera.setPadding(Ui.dp(c,24),0,Ui.dp(c,24),Ui.dp(c,12));
             Button b=Ui.button(c,s(R.string.open_camera),actions::openCamera);b.setTextSize(14);b.setTypeface(null,Typeface.NORMAL);b.setCompoundDrawablesRelative(KitIcon.drawable(c,R.raw.kit_camera,Ui.ink(c)),null,null,null);b.setCompoundDrawableTintList(android.content.res.ColorStateList.valueOf(Ui.ink(c)));b.setCompoundDrawablePadding(Ui.dp(c,8));camera.addView(b);content.addView(camera);
@@ -85,7 +86,7 @@ final class SettingsPanel extends FrameLayout {
             settings.multi=on;if(!on&&settings.selected.size()>1){String first=settings.selected.iterator().next();settings.selected.clear();settings.selected.add(first);}changed();rebuildAtSameScroll();
         });
         TextView selectionInfo=Ui.text(c,s(R.string.multi_select_note),14);selectionInfo.setTextColor(Ui.secondary(c));selectionInfo.setPadding(0,Ui.dp(c,2),Ui.dp(c,52),Ui.dp(c,10));selection.addView(selectionInfo);
-        ArrayList<String> ids=new ArrayList<>();for(String id:GridGeometry.IDS)if(!id.equals("golden_ratio"))ids.add(id);
+        ArrayList<String> ids=new ArrayList<>();for(GridCatalog.Entry entry:GridCatalog.entries())ids.add(entry.id());
         for(int i=0;i<ids.size();i+=2) {
             LinearLayout row=new LinearLayout(c);row.setGravity(Gravity.TOP);row.setPadding(Ui.dp(c,16),Ui.dp(c,8),Ui.dp(c,16),Ui.dp(c,8));
             for(int column=0;column<2;column++) {
@@ -103,16 +104,8 @@ final class SettingsPanel extends FrameLayout {
         Button add=Ui.addButton(files,s(R.string.import_grid),actions::importGrid);add.setCompoundDrawablesRelative(KitIcon.drawable(c,R.raw.kit_add,Ui.ink(c)),null,null,null);add.setCompoundDrawableTintList(android.content.res.ColorStateList.valueOf(Ui.ink(c)));
         Ui.toggle(files,s(R.string.keep_aspect),settings.keepAspect,on->{settings.keepAspect=on;changed();});Ui.note(files,s(R.string.keep_aspect_note));
     }
-    private String gridName(String id) {return s(switch(id) {
-        case "thirds"->R.string.grid_thirds;case "cross"->R.string.grid_cross;case "golden_grid"->R.string.grid_golden_grid;
-        case "spiral"->R.string.grid_spiral;case "x"->R.string.grid_x;case "diagonal"->R.string.grid_diagonal;
-        case "triangle"->R.string.grid_triangle;case "rabatment"->R.string.grid_rabatment;case "dynamic"->R.string.grid_dynamic;default->R.string.grid_custom;
-    });}
-    private String gridDescription(String id) {return s(switch(id) {
-        case "thirds"->R.string.desc_thirds;case "cross"->R.string.desc_cross;case "golden_grid"->R.string.desc_golden_grid;
-        case "spiral"->R.string.desc_spiral;case "x"->R.string.desc_x;case "diagonal"->R.string.desc_diagonal;
-        case "triangle"->R.string.desc_triangle;case "rabatment"->R.string.desc_rabatment;case "dynamic"->R.string.desc_dynamic;default->R.string.desc_custom;
-    });}
+    private String gridName(String id){GridCatalog.Entry entry=GridCatalog.find(id);return s(entry==null?R.string.grid_custom:entry.nameRes());}
+    private String gridDescription(String id){GridCatalog.Entry entry=GridCatalog.find(id);return s(entry==null?R.string.desc_custom:entry.descriptionRes());}
     private LinearLayout gridTile(String id,String name,String description) {
         Context c=getContext();LinearLayout tile=Ui.column(c);tile.setTag(id);tiles.add(tile);tile.setPadding(Ui.dp(c,6),Ui.dp(c,6),Ui.dp(c,6),Ui.dp(c,14));
         GradientDrawable bg=Ui.shape(settings.selected.contains(id)?Ui.card(c):Color.TRANSPARENT,20,c);if(settings.selected.contains(id))bg.setStroke(Ui.dp(c,1),Color.WHITE);tile.setBackground(bg);tile.setSelected(settings.selected.contains(id));

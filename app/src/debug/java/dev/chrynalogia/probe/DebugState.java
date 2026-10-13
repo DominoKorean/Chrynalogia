@@ -23,7 +23,7 @@ final class DebugState {
         JSONObject values=new JSONObject();
         for (Map.Entry<String,?> entry:c.getSharedPreferences("probe",0).getAll().entrySet()) {
             Object value=entry.getValue();String type=value instanceof Set?"set":value.getClass().getSimpleName();
-            values.put(entry.getKey(),new JSONObject().put("type",type).put("value",value instanceof Set?new JSONArray((Set<?>)value):value));
+            values.put(entry.getKey(),new JSONObject().put("type",type).put("value",value instanceof Set?new JSONArray((Set<?>)value):value instanceof Float?value.toString():value));
         }
         JSONArray files=new JSONArray();File[] inventory=new File(c.getFilesDir(),"grids").listFiles();
         if(inventory!=null)for(File file:inventory)files.put(file.getName());

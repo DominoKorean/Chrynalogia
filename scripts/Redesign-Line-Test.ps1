@@ -10,8 +10,11 @@ $original=(Get-CameraSnapshot).State
 $pixelScale=(Get-ProbeDisplay).DensityScale
 function Set-LineSlider([string]$Label,[int]$Value,[int]$Min,[int]$Max) {
  for($i=0;$i -lt 14;$i++) {
-  $node=@(Read-AppNodes) | Where-Object {$_.Description -eq $Label -and $_.Class -match '(SeekBar|KitSlider)$' -and $_.Visible -and $_.Bottom-$_.Top -ge (36*$display.DensityScale) -and $_.Bottom -lt ($display.Height*0.87)} | Select-Object -First 1
-  if($node){Start-Sleep -Milliseconds 500;$padding=12*$pixelScale;$x=[int]($node.Left+$padding+($Value-$Min)/[double]($Max-$Min)*($node.Right-$node.Left-2*$padding));Invoke-ProbeAdb shell input tap $x ([int](($node.Top+$node.Bottom)/2));Start-Sleep -Milliseconds 300;return}
+  $node=Find-ProbeSlider @(Read-AppNodes) $Label
+  if($node -and $node.Bottom -lt ($display.Height*0.87) -and $node.Bottom-$node.Top -ge (36*$display.DensityScale)){
+    $point=Get-ProbeSliderPoint $node $Value $Min $Max $display.DensityScale
+    Invoke-ProbeAdb shell input tap $point.X $point.Y;Start-Sleep -Milliseconds 300;return
+  }
   Invoke-ProbeAdb shell input swipe $swipeX $swipeBottom $swipeX $swipeMiddle 400
   Start-Sleep -Milliseconds 700
  }

@@ -16,7 +16,7 @@ final class SessionController {
         GridSettings state=new GridSettings(c);if(!state.onboarding)return false;
         state.activate(c);
         if(state.runMode.equals("manual")){
-            if(c.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED){CameraConnection.requestRefresh();return false;}
+            if(!SessionPolicy.shouldStart(SessionPolicy.StartCause.USER,input(c))){CameraConnection.requestRefresh();return false;}
             try{c.startForegroundService(new Intent(c,ManualSessionService.class));}
             catch(RuntimeException error){state.stop();ProbeLog.event(c,"manual_start_error","error",error.toString());CameraConnection.requestRefresh();return false;}
         }

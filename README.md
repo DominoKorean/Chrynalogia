@@ -1,5 +1,22 @@
 # Chrynalogia
 
+## 구조 안정화 — 2026-10-13
+
+기존 Java·네이티브 View, Figma 배치, One UI 원본 자산, 카메라 좌표 탐색과 터치 전달 플래그를 유지하면서 내부 구조를 개선했습니다. 버전 번호는 0.12로 유지합니다.
+
+- `SettingsStore`: 변경된 설정 항목만 저장하고 파일 목록·선택 변경을 직렬화합니다. `GridSettings`는 읽기 전용 스냅샷 검증과 이전 호환 저장을 제공합니다. 설정 이전은 Application 시작 시 수행합니다.
+- `GridFiles`: 변환 완료 시 최신 선택 방식·12개 제한을 확인하고 파일과 메타데이터를 등록합니다. 삭제 실패는 원래 파일·목록으로 복원하고 가져오기 오류는 번역된 리소스로 표시합니다.
+- `SessionPolicy` / `SessionController` / `CameraConnection`: 실행 정책, 실제 foreground 알림 준비 상태, 접근성 연결을 분리합니다. 중지된 수동 세션은 화면 재생성으로 다시 시작되지 않습니다.
+- `FrameRefresh` / `SettingsChange`: 연속 입력을 프레임 단위로 합치고 스타일 변경은 카메라 탐색·메뉴 창 재생성을 요구하지 않습니다.
+- `ImportAssets`: 제한된 백그라운드 작업과 공유 캐시로 파일을 준비합니다. View의 그리기 콜백에서 파일 읽기·디코딩·SVG 파싱을 하지 않습니다. SVG 색·불투명도 변경과 원본 아이콘은 캐시를 재사용합니다.
+- `GridCatalog`: 지원되는 9종·커스텀 격자의 식별자와 번역 리소스를 공유합니다. 단일 황금비는 이전 입력으로만 처리합니다.
+
+`Build.ps1`은 단위 검사·lint와 AndroidTest APK 컴파일까지 수행하며 휴대폰에 자동 설치하지 않습니다. PowerShell 검사는 `pwsh -NoProfile -File scripts/Script-Checks.ps1`로 실행합니다. 활성 UI 스크립트는 현재 KitSlider·기기 배율을 사용하고 성공·실패 모두 앱 설정, 언어, 실행 상태와 변경한 화면 설정을 복원합니다. `backup-state` / `restore-state`는 debug APK의 DUMP 보호 명령이며 접근성 미연결 상태에서도 사용할 수 있습니다.
+
+계측 runner의 `suite`는 `settings`, `files`, `session`, `render`, `render-hardening`, `all`입니다. `all`은 검사 그룹 사이와 종료 시 사용자 설정을 복원합니다. UI 검사에는 이미 허용·연결된 접근성 서비스와 한국어 삼성 카메라 UI가 필요합니다. 기존 v0.9 전용 Feature/Style/Session/Lifecycle/Import 스크립트는 보관용이며 현재 UI에서 실행하지 않습니다.
+
+현재 구조 안정화 검증: 단위 검사 15개, S23 계측 검사 64개, PowerShell 검사 34개 통과, lint 오류 0. 카메라 위 UI 검사는 기기의 접근성 연결이 꺼져 있어 이번 실행에 포함하지 못했습니다. 실제 손가락 입력, 다른 기종과 배터리·프레임 시간 개선은 이 결과로 검증했다고 주장하지 않습니다. 상세 기록은 `docs/superpowers/implementation/2026-10-13-structure-hardening.md`와 로컬 `artifacts/hardening`에 있습니다.
+
 삼성 공식 카메라 위에 구도 그리드를 표시하는 Android 앱입니다. 실제 `camera_preview`의 접근성 좌표를 읽으므로 촬영 비율과 모드가 바뀌어도 미리보기 영역을 따라갑니다. Galaxy S23 / One UI 8.5에서 개발·검증합니다.
 
 ## 사용

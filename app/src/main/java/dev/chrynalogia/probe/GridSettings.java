@@ -45,7 +45,7 @@ final class GridSettings {
         try {JSONArray raw=new JSONArray(string(v,"imports","[]"));for(int i=0;i<raw.length();i++){ImportedGrid file=ImportedGrid.parse(raw.optJSONObject(i));if(file!=null&&known.add(file.id()))imports.put(file.json());}}
         catch(Exception error){imports=new JSONArray();}
         selected=new LinkedHashSet<>();Object raw=v.get("selected");
-        if(raw instanceof Set<?> ids){for(Object value:ids)if(value instanceof String id&&(known.contains(id)||java.util.Arrays.asList(GridGeometry.IDS).contains(id)))selected.add(id);}
+        if(raw instanceof Set<?> ids){for(Object value:ids)if(value instanceof String id){if(id.equals("golden_ratio"))id="golden_grid";if(known.contains(id)||GridCatalog.contains(id))selected.add(id);}}
         else selected.add("golden_grid");
         original=values();
     }

@@ -34,14 +34,15 @@ public final class RenderChecks extends Instrumentation {
             GridSettings settings=new GridSettings(c);settings.hidden=false;settings.rotation=0;settings.flipX=false;settings.flipY=false;
             settings.color=Color.WHITE;settings.opacity=1;settings.thickness=1.2f;settings.outline=false;settings.multi=false;settings.save();
             for(String id:GridGeometry.IDS) {settings.selected=Set.of(id);settings.save();check(nonempty(render(c))>0,"Rendered "+id);}
-            settings.selected=Set.of("golden_ratio");settings.save();Bitmap originalGrid=render(c);
-            check(alpha(originalGrid,247,100)>100,"Golden line at 61.8%");
+            String transformId=GridImporter.importBytes(c,"transform-check.svg","<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M25 0 L25 100 M0 25 L100 25'/></svg>".getBytes(StandardCharsets.UTF_8));
+            created.add(new File(c.getFilesDir(),"grids/"+transformId+".svg"));settings.reload();settings.keepAspect=false;settings.save();
+            Bitmap originalGrid=render(c);check(alpha(originalGrid,100,400)>100&&alpha(originalGrid,300,400)==0,"Asymmetric source geometry");
             settings.flipX=true;settings.save();Bitmap flipped=render(c);
-            check(alpha(flipped,153,100)>100 && alpha(flipped,247,100)==0,"Horizontal reflection");
+            check(alpha(flipped,300,400)>100&&alpha(flipped,100,400)==0,"Horizontal reflection");
             settings.flipX=false;settings.rotation=1;settings.save();Bitmap rotated=render(c);
-            check(alpha(rotated,153,100)>100,"Quarter turn fits the preview");
+            check(alpha(rotated,300,400)>100&&alpha(rotated,100,400)==0,"Quarter turn fits the preview");
             settings.flipX=true;settings.save();Bitmap rotatedFlipped=render(c);
-            check(alpha(rotatedFlipped,247,100)>100 && alpha(rotatedFlipped,153,100)==0,"Flip stays horizontal after rotation");
+            check(alpha(rotatedFlipped,100,400)>100&&alpha(rotatedFlipped,300,400)==0,"Flip stays horizontal after rotation");
             settings.flipX=false;
             settings.rotation=0;settings.selected=Set.of("rabatment");settings.save();Bitmap horizontalRabatment=render(c);
             check(alpha(horizontalRabatment,100,200)>100&&alpha(horizontalRabatment,133,100)==0,"Rabatment starts with horizontal lines");
@@ -81,19 +82,28 @@ public final class RenderChecks extends Instrumentation {
             check(SessionPolicy.active(new SessionPolicy.Input(true,"manual",false,3,3,true,true)),"Manual ready in current boot");
             check(!SessionPolicy.active(new SessionPolicy.Input(true,"manual",false,2,3,true,true)),"Manual expires across reboot");
             }
+            if(suite.equals("all")){
+                restore(prefs,original);passed+=SettingsChecks.run(c);
+                restore(prefs,original);passed+=ImportChecks.run(c);
+                restore(prefs,original);passed+=SessionChecks.run(c,this);
+                restore(prefs,original);passed+=RenderHardeningChecks.run(c,this);
+            }
             result.putString("stream","PASS: "+passed+" "+suite+" checks\n");
         } catch(Throwable error) {resultCode=0;result.putString("stream","FAIL after "+passed+" checks: "+error+"\n");}
         finally {
-            SharedPreferences.Editor edit=prefs.edit().clear();
-            for(var item:original.entrySet()) {
-                String k=item.getKey();Object v=item.getValue();
-                if(v instanceof String s)edit.putString(k,s);else if(v instanceof Boolean b)edit.putBoolean(k,b);
-                else if(v instanceof Integer n)edit.putInt(k,n);else if(v instanceof Float n)edit.putFloat(k,n);
-                else if(v instanceof Long n)edit.putLong(k,n);else if(v instanceof Set<?> set){Set<String> strings=new HashSet<>();for(Object s:set)strings.add((String)s);edit.putStringSet(k,strings);}
-            }
-            edit.commit();for(File file:created)file.delete();
+            restore(prefs,original);for(File file:created)file.delete();
         }
         finish(resultCode,result);
+    }
+    private static void restore(SharedPreferences prefs,Map<String,?> original){
+        SharedPreferences.Editor edit=prefs.edit().clear();
+        for(var item:original.entrySet()) {
+            String k=item.getKey();Object v=item.getValue();
+            if(v instanceof String s)edit.putString(k,s);else if(v instanceof Boolean b)edit.putBoolean(k,b);
+            else if(v instanceof Integer n)edit.putInt(k,n);else if(v instanceof Float n)edit.putFloat(k,n);
+            else if(v instanceof Long n)edit.putLong(k,n);else if(v instanceof Set<?> set){Set<String> strings=new HashSet<>();for(Object s:set)strings.add((String)s);edit.putStringSet(k,strings);}
+        }
+        if(!edit.commit())throw new AssertionError("Could not restore test preferences");
     }
     private void check(boolean value,String name) {if(!value)throw new AssertionError(name);passed++;}
     private void reject(Context c,String name,byte[] bytes) throws Exception {

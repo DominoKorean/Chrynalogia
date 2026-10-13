@@ -1,5 +1,9 @@
 function Find-ProbeSlider($Nodes, [string]$Label) {
-    $Nodes | Where-Object { $_.Visible -and $_.Description -eq $Label -and $_.Class -match '(SeekBar|KitSlider)$' -and $_.Right -gt $_.Left -and $_.Bottom -gt $_.Top } | Select-Object -First 1
+    foreach($node in $Nodes) {
+        if(-not $node.Visible -or $node.Description -ne $Label -or $node.Class -notmatch '(SeekBar|KitSlider)$' -or $node.Right -le $node.Left -or $node.Bottom -le $node.Top){continue}
+        $blocked=$Nodes | Where-Object { $_.Visible -and $_.Clickable -and $_.Description -in @('그리드','라인','설정','Grid','Line','Settings') -and $node.Left -lt $_.Right -and $node.Right -gt $_.Left -and $node.Top -lt $_.Bottom -and $node.Bottom -gt $_.Top }
+        if(-not $blocked){return $node}
+    }
 }
 function Get-ProbeSliderPoint($Node, [int]$Value, [int]$Min, [int]$Max, [double]$DensityScale) {
     if ($Max -le $Min -or $DensityScale -le 0) { throw 'Invalid slider range or density' }

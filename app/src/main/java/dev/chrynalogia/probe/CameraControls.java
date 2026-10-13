@@ -94,7 +94,7 @@ final class CameraControls {
         if(popup!=null) {closePopup();return;}
         popup=Ui.column(Ui.context(service));popup.setBackground(Ui.shape(Ui.bg(service),28,service));popup.setClipToOutline(true);
         LinearLayout top=new LinearLayout(service);top.setGravity(Gravity.CENTER_VERTICAL);
-        TextView title=Ui.text(service,"Chrynalogia",20);top.addView(title,new LinearLayout.LayoutParams(0,-2,1));
+        TextView title=Ui.text(service,service.getString(R.string.app_name),20);top.addView(title,new LinearLayout.LayoutParams(0,-2,1));
         KitIcon close=new KitIcon(service,R.raw.kit_close,Ui.ink(service));close.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);close.setContentDescription(service.getString(R.string.close));close.setPadding(Ui.dp(service,12),Ui.dp(service,12),Ui.dp(service,12),Ui.dp(service,12));close.setOnClickListener(v->closePopup());top.addView(close,new LinearLayout.LayoutParams(Ui.dp(service,48),Ui.dp(service,48)));popup.addView(top);
         settingsPanel=new SettingsPanel(service,new SettingsPanel.Actions() {
             public void changed(){service.refreshSettings();}

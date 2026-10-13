@@ -12,8 +12,11 @@ function Save-Screen([string]$Name){Invoke-ProbeAdb shell screencap -p /data/loc
 function Set-Hex([string]$Value){Tap-AppLabel '라인 색상 HEX';Invoke-ProbeAdb shell input keyevent KEYCODE_MOVE_END KEYCODE_DEL KEYCODE_DEL KEYCODE_DEL KEYCODE_DEL KEYCODE_DEL KEYCODE_DEL KEYCODE_DEL;Invoke-ProbeAdb shell input text $Value;Invoke-ProbeAdb shell input keyevent KEYCODE_ENTER;Start-Sleep -Milliseconds 350;if((Invoke-ProbeAdb shell dumpsys input_method | Select-String 'mInputShown=true')){Invoke-ProbeAdb shell input keyevent KEYCODE_BACK}}
 function Set-Slider([string]$Label,[int]$Value,[int]$Min,[int]$Max){
  for($i=0;$i -lt 14;$i++){
-  $node=@(Read-AppNodes)|Where-Object {$_.Description -eq $Label -and $_.Class -match '(SeekBar|KitSlider)$' -and $_.Visible -and $_.Bottom -lt ($display.Height*0.86) -and $_.Bottom-$_.Top -ge (36*$display.DensityScale)}|Select-Object -First 1
-  if($node){Start-Sleep -Milliseconds 500;$padding=12*(Get-ProbeDisplay).DensityScale;$x=[int]($node.Left+$padding+($Value-$Min)/[double]($Max-$Min)*($node.Right-$node.Left-2*$padding));Invoke-ProbeAdb shell input tap $x ([int](($node.Top+$node.Bottom)/2));Start-Sleep -Milliseconds 300;return}
+  $node=Find-ProbeSlider @(Read-AppNodes) $Label
+  if($node -and $node.Bottom -lt ($display.Height*0.87) -and $node.Bottom-$node.Top -ge (36*$display.DensityScale)){
+    $point=Get-ProbeSliderPoint $node $Value $Min $Max $display.DensityScale
+    Invoke-ProbeAdb shell input tap $point.X $point.Y;Start-Sleep -Milliseconds 300;return
+  }
   Invoke-ProbeAdb shell input swipe $swipeX $swipeBottom $swipeX $swipeMiddle 400;Start-Sleep -Milliseconds 700
  };throw "Missing slider: $Label"
 }

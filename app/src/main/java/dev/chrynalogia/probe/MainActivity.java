@@ -37,7 +37,7 @@ public final class MainActivity extends Activity {
         if(!settings.onboarding) {
             ScrollView scroll=new ScrollView(this);LinearLayout welcome=Ui.column(this);welcome.setPadding(0,Ui.dp(this,48),0,Ui.dp(this,24));scroll.addView(welcome);root.addView(scroll);
             ImageView logo=new ImageView(this);logo.setImageResource(R.drawable.app_logo);welcome.addView(logo,new LinearLayout.LayoutParams(-1,Ui.dp(this,120)));
-            Ui.title(welcome,"Chrynalogia");Ui.note(welcome,getString(R.string.welcome_intro));Ui.title(welcome,getString(R.string.welcome_mode));
+            Ui.title(welcome,getString(R.string.app_name));Ui.note(welcome,getString(R.string.welcome_intro));Ui.title(welcome,getString(R.string.welcome_mode));
             Ui.note(welcome,getString(R.string.welcome_disclosure));Ui.note(welcome,getString(R.string.welcome_privacy));
             Ui.addButton(welcome,getString(R.string.always),()->chooseMode("always"));Ui.addButton(welcome,getString(R.string.choose_manual),()->chooseMode("manual"));
         } else {panel=new SettingsPanel(this,new SettingsPanel.Actions() {

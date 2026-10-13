@@ -10,6 +10,9 @@ $point = Get-ProbeSliderPoint $node 0 0 100 2
 Check ($point.X -eq 124) 'density-aware inset'
 $node.Visible=$false
 Check ($null -eq (Find-ProbeSlider @($node) 'Opacity')) 'invisible slider is ignored'
+$node.Visible=$true
+$bar=[pscustomobject]@{Description='Line';Visible=$true;Clickable=$true;Left=80;Right=520;Top=220;Bottom=280}
+Check ($null -eq (Find-ProbeSlider @($node,$bar) 'Opacity')) 'navigation-obscured slider is ignored'
 $events = [System.Collections.Generic.List[string]]::new()
 try { Invoke-ProbeTest { throw 'body error' } @({ $events.Add('first'); throw 'restore error' }, { $events.Add('last') }); throw 'expected failure' }
 catch { Check ($events.Count -eq 2) 'all restoration steps execute'; Check ($_.Exception.ToString().Contains('body error') -and $_.Exception.ToString().Contains('restore error')) 'both errors survive' }
