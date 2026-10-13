@@ -24,9 +24,9 @@ final class SettingsStore {
         for(var item:current.entrySet())if(!Objects.equals(item.getValue(),state.original.get(item.getKey()))){put(edit,item.getKey(),item.getValue());changed=true;}
         if(changed){if(synchronous){if(!edit.commit())return false;}else edit.apply();}state.original=current;return true;
     }}
-    private static void put(SharedPreferences.Editor edit,String key,Object value){
+    static void put(SharedPreferences.Editor edit,String key,Object value){
         if(value instanceof Boolean b)edit.putBoolean(key,b);else if(value instanceof Integer i)edit.putInt(key,i);
-        else if(value instanceof Float f)edit.putFloat(key,f);else if(value instanceof String s)edit.putString(key,s);
+        else if(value instanceof Long n)edit.putLong(key,n);else if(value instanceof Float f)edit.putFloat(key,f);else if(value instanceof String s)edit.putString(key,s);
         else if(value instanceof Set<?> values){Set<String> strings=new LinkedHashSet<>();for(Object item:values)strings.add((String)item);edit.putStringSet(key,strings);}
         else throw new IllegalArgumentException("Unsupported preference "+key);
     }

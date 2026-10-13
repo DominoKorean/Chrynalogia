@@ -20,10 +20,12 @@ public final class RenderChecks extends Instrumentation {
         Context c=getTargetContext();SharedPreferences prefs=c.getSharedPreferences("probe",Context.MODE_PRIVATE);
         Map<String,?> original=new HashMap<>(prefs.getAll());
         Bundle result=new Bundle();
-        int resultCode=-1;
+        int resultCode=-1;Throwable failure=null;
         try {
             if(suite.equals("settings")) {
                 passed+=SettingsChecks.run(c);
+            } else if(suite.equals("failures")) {
+                passed+=FailureChecks.files(c);passed+=FailureChecks.restore(c);
             } else if(suite.equals("files")) {
                 passed+=ImportChecks.run(c);
             } else if(suite.equals("session")) {
@@ -87,12 +89,16 @@ public final class RenderChecks extends Instrumentation {
                 restore(prefs,original);passed+=ImportChecks.run(c);
                 restore(prefs,original);passed+=SessionChecks.run(c,this);
                 restore(prefs,original);passed+=RenderHardeningChecks.run(c,this);
+                restore(prefs,original);passed+=FailureChecks.files(c);passed+=FailureChecks.restore(c);
             }
-            result.putString("stream","PASS: "+passed+" "+suite+" checks\n");
-        } catch(Throwable error) {resultCode=0;result.putString("stream","FAIL after "+passed+" checks: "+error+"\n");}
+        } catch(Throwable error) {failure=error;}
         finally {
-            restore(prefs,original);for(File file:created)file.delete();
+            java.util.ArrayList<RestoreSteps.Step> steps=new java.util.ArrayList<>();steps.add(()->restore(prefs,original));
+            for(File file:created)steps.add(()->{if(file.exists()&&!file.delete())throw new java.io.IOException("Could not remove test file: "+file.getName());});
+            try{RestoreSteps.run(steps.toArray(RestoreSteps.Step[]::new));}catch(Exception error){if(failure==null)failure=error;else failure.addSuppressed(error);}
         }
+        if(failure==null)result.putString("stream","PASS: "+passed+" "+suite+" checks\n");
+        else {resultCode=0;java.io.StringWriter details=new java.io.StringWriter();failure.printStackTrace(new java.io.PrintWriter(details));result.putString("stream","FAIL after "+passed+" checks: "+details+"\n");}
         finish(resultCode,result);
     }
     private static void restore(SharedPreferences prefs,Map<String,?> original){
@@ -103,7 +109,7 @@ public final class RenderChecks extends Instrumentation {
             else if(v instanceof Integer n)edit.putInt(k,n);else if(v instanceof Float n)edit.putFloat(k,n);
             else if(v instanceof Long n)edit.putLong(k,n);else if(v instanceof Set<?> set){Set<String> strings=new HashSet<>();for(Object s:set)strings.add((String)s);edit.putStringSet(k,strings);}
         }
-        if(!edit.commit())throw new AssertionError("Could not restore test preferences");
+        if(!edit.commit())throw new IllegalStateException("Could not restore test preferences");
     }
     private void check(boolean value,String name) {if(!value)throw new AssertionError(name);passed++;}
     private void reject(Context c,String name,byte[] bytes) throws Exception {

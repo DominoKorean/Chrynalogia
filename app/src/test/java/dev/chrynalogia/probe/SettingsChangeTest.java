@@ -6,7 +6,7 @@ import static org.junit.Assert.*;
 public class SettingsChangeTest {
     private Object state(int color,boolean hidden,float thickness) throws Exception {
         Class<?> type=Class.forName("dev.chrynalogia.probe.SettingsChange$State");var ctor=type.getDeclaredConstructors()[0];ctor.setAccessible(true);
-        return ctor.newInstance(color,0.9f,thickness,false,hidden,Set.of("thirds"),0,3,3,false,false,"always");
+        return ctor.newInstance(color,0.9f,thickness,false,hidden,Set.of("thirds"),0,3,3,false,false,"always",false,false);
     }
     private boolean flag(Object before,Object after,String name) throws Exception {
         Class<?> type=Class.forName("dev.chrynalogia.probe.SettingsChange");var classify=type.getDeclaredMethod("classify",before.getClass(),after.getClass());classify.setAccessible(true);
@@ -19,5 +19,15 @@ public class SettingsChangeTest {
     @Test public void geometryInvalidatesPicturesAndHiddenStateUpdatesMenu() throws Exception {
         assertTrue(flag(state(-1,false,1.2f),state(-1,false,2.4f),"pictures"));
         assertTrue(flag(state(-1,false,1.2f),state(-1,true,1.2f),"menu"));
+    }
+    @Test public void flipsRefreshRenderingWithoutInvalidatingPictures() throws Exception {
+        var fields=Class.forName("dev.chrynalogia.probe.SettingsChange$State").getRecordComponents();
+        for(String axis:new String[]{"flipX","flipY"}){
+            Object before=state(-1,false,1.2f);Object[] values=new Object[fields.length];boolean found=false;
+            for(int i=0;i<fields.length;i++){var accessor=fields[i].getAccessor();accessor.setAccessible(true);values[i]=accessor.invoke(before);if(fields[i].getName().equals(axis)){values[i]=true;found=true;}}
+            assertTrue("Missing render classification for "+axis,found);
+            var ctor=before.getClass().getDeclaredConstructors()[0];ctor.setAccessible(true);Object after=ctor.newInstance(values);
+            assertTrue(flag(before,after,"render"));assertFalse(flag(before,after,"pictures"));
+        }
     }
 }

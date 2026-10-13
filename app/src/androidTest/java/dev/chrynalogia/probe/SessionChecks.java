@@ -15,7 +15,12 @@ final class SessionChecks {
         SettingsChecks.require(Boolean.TRUE.equals(c.getSharedPreferences("probe",0).getAll().get("paused")),"Recreation cleared explicit pause");
         runner.runOnMainSync(()->SessionController.changeMode(c,"always"));
         runner.waitForIdleSync();SettingsChecks.require(SessionController.active(c),"Always mode remained dependent on manual service");
+        runner.runOnMainSync(()->SessionController.changeMode(c,"manual"));waitReady(runner);
+        runner.runOnMainSync(()->{SessionController.changeMode(c,"always");SessionController.changeMode(c,"manual");});
+        Thread.sleep(500);waitReady(runner);
+        SettingsChecks.require(!Boolean.TRUE.equals(c.getSharedPreferences("probe",0).getAll().get("paused"))&&SessionController.active(c),"Older service destruction cancelled latest manual session");
         runner.runOnMainSync(()->SessionController.stop(c));runner.waitForIdleSync();
-        return 4;
+        return 5;
     }
+    private static void waitReady(Instrumentation runner) throws Exception {long end=System.currentTimeMillis()+5000;do{runner.waitForIdleSync();if(SessionController.ready())return;Thread.sleep(20);}while(System.currentTimeMillis()<end);throw new AssertionError("Latest manual session never became ready");}
 }

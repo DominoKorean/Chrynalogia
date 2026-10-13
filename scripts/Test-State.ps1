@@ -29,32 +29,41 @@ function Invoke-ProbeTest([scriptblock]$Body, [scriptblock[]]$Restore) {
     if ($failures.Count) { throw [System.AggregateException]::new('Test or restoration failed',$failures) }
 }
 function Start-ProbeTest {
-    if ($script:ProbeTestDepth -gt 0) { $script:ProbeTestDepth++; return }
+    # Child scripts have separate script scopes; the runspace owns the outer backup.
+    if ($global:ChrynalogiaProbeTestState -and $global:ChrynalogiaProbeTestState.Depth -gt 0) {
+        if($global:ChrynalogiaProbeTestState.Device -ne ($DeviceArguments -join ' ')){throw 'Nested test targets a different device'}
+        $global:ChrynalogiaProbeTestState.Depth++; return
+    }
     Send-ProbeCommand backup-state | Out-Null
     $size=(Invoke-ProbeAdb shell wm size) -join "`n";$density=(Invoke-ProbeAdb shell wm density) -join "`n"
-    $script:ProbeRestoreSize=if($size -match 'Override size: (\d+x\d+)'){$Matches[1]}else{'reset'}
-    $script:ProbeRestoreDensity=if($density -match 'Override density: (\d+)'){$Matches[1]}else{'reset'}
-    $script:ProbeRotation=(Invoke-ProbeAdb shell settings get system user_rotation) -join ''
-    $script:ProbeAutoRotation=(Invoke-ProbeAdb shell settings get system accelerometer_rotation) -join ''
-    $script:ProbeCameraBaseline=if(Get-Command Get-CameraSnapshot -ErrorAction SilentlyContinue){Get-CameraSnapshot}else{$null}
-    $script:ProbeTestDepth=1
-}
-function Stop-ProbeTest {
-    if ($script:ProbeTestDepth -le 0) { return }
-    $script:ProbeTestDepth--
-    if ($script:ProbeTestDepth -eq 0) {
-        Invoke-ProbeTest {} @(
-            { Invoke-ProbeAdb shell wm size $script:ProbeRestoreSize | Out-Null },
-            { Invoke-ProbeAdb shell wm density $script:ProbeRestoreDensity | Out-Null },
-            { if($script:ProbeRotation -eq 'null'){Invoke-ProbeAdb shell settings delete system user_rotation | Out-Null}else{Invoke-ProbeAdb shell settings put system user_rotation $script:ProbeRotation | Out-Null} },
-            { if($script:ProbeAutoRotation -eq 'null'){Invoke-ProbeAdb shell settings delete system accelerometer_rotation | Out-Null}else{Invoke-ProbeAdb shell settings put system accelerometer_rotation $script:ProbeAutoRotation | Out-Null} },
-            { Send-ProbeCommand restore-state | Out-Null },
-            { Restore-ProbeCamera }
-        )
+    $global:ChrynalogiaProbeTestState=[pscustomobject]@{
+        Depth=1;Device=($DeviceArguments -join ' ')
+        Size=$(if($size -match 'Override size: (\d+x\d+)'){$Matches[1]}else{'reset'})
+        Density=$(if($density -match 'Override density: (\d+)'){$Matches[1]}else{'reset'})
+        Rotation=((Invoke-ProbeAdb shell settings get system user_rotation) -join '')
+        AutoRotation=((Invoke-ProbeAdb shell settings get system accelerometer_rotation) -join '')
+        Camera=$(if(Get-Command Get-CameraSnapshot -ErrorAction SilentlyContinue){Get-CameraSnapshot}else{$null})
     }
 }
-function Restore-ProbeCamera {
-    $original=$script:ProbeCameraBaseline
+function Stop-ProbeTest {
+    $state=$global:ChrynalogiaProbeTestState
+    if (-not $state -or $state.Depth -le 0) { return }
+    if($state.Device -ne ($DeviceArguments -join ' ')){throw 'Restoration targets a different device'}
+    $state.Depth--
+    if ($state.Depth -eq 0) {
+        try {
+        Invoke-ProbeTest {} @(
+            { Invoke-ProbeAdb shell wm size $state.Size | Out-Null },
+            { Invoke-ProbeAdb shell wm density $state.Density | Out-Null },
+            { if($state.Rotation -eq 'null'){Invoke-ProbeAdb shell settings delete system user_rotation | Out-Null}else{Invoke-ProbeAdb shell settings put system user_rotation $state.Rotation | Out-Null} },
+            { if($state.AutoRotation -eq 'null'){Invoke-ProbeAdb shell settings delete system accelerometer_rotation | Out-Null}else{Invoke-ProbeAdb shell settings put system accelerometer_rotation $state.AutoRotation | Out-Null} },
+            { Send-ProbeCommand restore-state | Out-Null },
+            { Restore-ProbeCamera $state.Camera }
+        )
+        } finally { $global:ChrynalogiaProbeTestState=$null }
+    }
+}
+function Restore-ProbeCamera($original) {
     if(-not $original -or $original.State.foreground -ne 'com.sec.android.app.camera' -or $original.State.cameraMode -eq 'unknown'){return}
     $mode=$original.State.cameraMode
     $menu=Open-CameraMoreMenu
