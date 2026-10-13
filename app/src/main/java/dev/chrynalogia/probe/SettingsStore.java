@@ -18,10 +18,11 @@ final class SettingsStore {
         p.edit().putStringSet("selected",new LinkedHashSet<>(state.selected)).putBoolean("retiredGoldenRatio",true).apply();
     }}
     static GridSettings update(Context c,Consumer<GridSettings> mutation){synchronized(LOCK){GridSettings s=new GridSettings(c);mutation.accept(s);saveChanges(s);return s;}}
-    static void saveChanges(GridSettings state){synchronized(LOCK){
+    static void saveChanges(GridSettings state){saveChanges(state,false);}
+    static boolean saveChanges(GridSettings state,boolean synchronous){synchronized(LOCK){
         Map<String,Object> current=state.values();SharedPreferences.Editor edit=state.prefs.edit();boolean changed=false;
         for(var item:current.entrySet())if(!Objects.equals(item.getValue(),state.original.get(item.getKey()))){put(edit,item.getKey(),item.getValue());changed=true;}
-        if(changed)edit.apply();state.original=current;
+        if(changed){if(synchronous){if(!edit.commit())return false;}else edit.apply();}state.original=current;return true;
     }}
     private static void put(SharedPreferences.Editor edit,String key,Object value){
         if(value instanceof Boolean b)edit.putBoolean(key,b);else if(value instanceof Integer i)edit.putInt(key,i);

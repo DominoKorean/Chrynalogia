@@ -220,7 +220,7 @@ final class SettingsPanel extends FrameLayout {
     }
     private void rebuildAtSameScroll() {int y=scroll.getScrollY();build();scroll.post(()->scroll.scrollTo(0,y));}
     private void removeImport(String id) {
-        JSONArray remaining=new JSONArray();for(int i=0;i<settings.imports.length();i++){JSONObject data=settings.imports.optJSONObject(i);if(data==null)continue;if(id.equals(data.optString("id")))new File(getContext().getFilesDir(),"grids/"+id+data.optString("extension")).delete();else remaining.put(data);}
-        settings.imports=remaining;settings.selected.remove(id);changed();rebuildAtSameScroll();
+        try{GridFiles.remove(getContext(),id);settings.reload();actions.changed();rebuildAtSameScroll();}
+        catch(GridImportException error){Toast.makeText(getContext(),error.messageRes,Toast.LENGTH_LONG).show();}
     }
 }

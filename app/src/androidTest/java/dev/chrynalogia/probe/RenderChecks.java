@@ -25,6 +25,8 @@ public final class RenderChecks extends Instrumentation {
         try {
             if(suite.equals("settings")) {
                 passed+=SettingsChecks.run(c);
+            } else if(suite.equals("files")) {
+                passed+=ImportChecks.run(c);
             } else {
             GridSettings settings=new GridSettings(c);settings.hidden=false;settings.rotation=0;settings.flipX=false;settings.flipY=false;
             settings.color=Color.WHITE;settings.opacity=1;settings.thickness=1.2f;settings.outline=false;settings.multi=false;settings.save();

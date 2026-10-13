@@ -95,7 +95,9 @@
     <string name="grid_cross">Center cross</string>
     <string name="desc_cross">Align your subject at the center.</string>
     <string name="grid_golden_grid">Golden ratio grid</string>
-    <string name="desc_golden_grid">Place subjects at 38.2% and 61.8%.</string>
+    <string name="desc_golden_grid" formatted="false">Place subjects at 38.2% and 61.8%.</string>
+    <string name="grid_delete_error">Unable to delete this grid. Please try again.</string>
+    <string name="svg_parse_error">Unable to read this SVG. Choose a supported SVG line file.</string>
     <string name="grid_spiral">Golden spiral</string>
     <string name="desc_spiral">Guide the eye along a golden spiral.</string>
     <string name="grid_x">Diagonal cross</string>
