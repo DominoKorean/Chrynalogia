@@ -108,6 +108,11 @@ final class CameraControls {
     }
     void refresh() {if(toolbar!=null){int visibility=stopCell.getVisibility();updateActions();if(visibility!=stopCell.getVisibility())layout();else rotateIcons();}}
     void configurationChanged(){if(toolbar!=null){if(layoutQuarter!=displayTurn())layout();else rotateIcons();}}
+    private void flip(boolean horizontal){
+        boolean changeX=horizontal==CameraCoordinates.horizontalFlipChangesX(uiQuarterTurn());
+        GridSettings g=new GridSettings(service);if(changeX)g.flipX=!g.flipX;else g.flipY=!g.flipY;
+        g.save();service.refreshSettings();
+    }
     @android.annotation.SuppressLint("RtlHardcoded") // Camera anchors are physical display coordinates.
     private WindowManager.LayoutParams params(int w,int h,int x,int y,boolean focus,String title) {
         WindowManager.LayoutParams p=new WindowManager.LayoutParams(w,h,WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
@@ -127,8 +132,8 @@ final class CameraControls {
         visibilityCell=addIcon(R.raw.kit_hide,R.string.hide_grid,R.string.visibility,()->{GridSettings g=new GridSettings(service);g.hidden=!g.hidden;g.save();service.refreshSettings();});
         visibilityIcon=(KitIcon)((LinearLayout)visibilityCell.getChildAt(0)).getChildAt(0);
         addIcon(R.raw.kit_rotate,R.string.rotate_grid,R.string.rotate,()->{GridSettings g=new GridSettings(service);g.rotation=(g.rotation+1)%4;g.save();service.refreshSettings();});
-        addIcon(R.raw.kit_perspective_vertical,R.string.flip_horizontal,R.string.flip_x_short,()->{GridSettings g=new GridSettings(service);g.flipX=!g.flipX;g.save();service.refreshSettings();});
-        addIcon(R.raw.kit_perspective_horizontal,R.string.flip_vertical,R.string.flip_y_short,()->{GridSettings g=new GridSettings(service);g.flipY=!g.flipY;g.save();service.refreshSettings();});
+        addIcon(R.raw.kit_perspective_vertical,R.string.flip_horizontal,R.string.flip_x_short,()->flip(true));
+        addIcon(R.raw.kit_perspective_horizontal,R.string.flip_vertical,R.string.flip_y_short,()->flip(false));
         addIcon(R.raw.kit_settings,R.string.open_grid_settings,R.string.tab_settings,this::openPopup);
         stopCell=addIcon(R.raw.kit_power,R.string.stop_overlay,R.string.stop,()->{service.setPaused(true);service.stopService(new Intent(service,ManualSessionService.class));});
         updateActions();layout();if(orientation.canDetectOrientation())orientation.enable();
@@ -167,6 +172,7 @@ final class CameraControls {
         rotateIcons();
         if(popup!=null)layoutPopup();
         layoutQuarter=quarter;
+        ProbeLog.event(service,"camera_controls_layout","display",quarter,"naturalOpener",naturalOpenerBounds(),"opener",openerBounds());
     }
     private void rotateIcons(){
         float target=CameraCoordinates.iconAngle(displayTurn(),uiQuarterTurn());

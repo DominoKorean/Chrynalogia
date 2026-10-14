@@ -2,6 +2,7 @@ package dev.chrynalogia.probe;
 
 /** Camera anchors use natural-device coordinates; only the display projection changes. */
 final class CameraCoordinates {
+    static boolean horizontalFlipChangesX(int physicalTurn){return Math.floorMod(physicalTurn,2)==0;}
     static CameraMenuPlacement.Box rotate(CameraMenuPlacement.Box box,CameraMenuPlacement.Box frame,int quarter){
         int l=box.left()-frame.left(),t=box.top()-frame.top(),r=box.right()-frame.left(),b=box.bottom()-frame.top();
         int x=frame.left(),y=frame.top(),w=frame.width(),h=frame.height();

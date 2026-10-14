@@ -2,6 +2,12 @@ package dev.chrynalogia.probe;
 import org.junit.Test;
 import static org.junit.Assert.*;
 public class CameraCoordinatesTest {
+    @Test public void flipActionsFollowBothPhysicalLandscapeDirections() {
+        assertTrue(CameraCoordinates.horizontalFlipChangesX(0));
+        assertFalse(CameraCoordinates.horizontalFlipChangesX(1));
+        assertTrue(CameraCoordinates.horizontalFlipChangesX(2));
+        assertFalse(CameraCoordinates.horizontalFlipChangesX(3));
+    }
     private final CameraMenuPlacement.Box portrait=new CameraMenuPlacement.Box(0,0,1080,2340);
     private final CameraMenuPlacement.Box landscape=new CameraMenuPlacement.Box(0,0,2340,1080);
     private final CameraMenuPlacement.Box opener=new CameraMenuPlacement.Box(39,81,165,176);
