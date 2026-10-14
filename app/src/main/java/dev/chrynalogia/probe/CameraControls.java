@@ -231,6 +231,7 @@ final class CameraControls {
             public void startSession(){closePopup();service.startActivity(new Intent(service,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));}
             public void appearanceChanged(){service.refreshSettings();}
             public void permissions(boolean overlay){closePopup();service.startActivity(new Intent(service,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));}
+            public void openPermissionGuide(){closePopup();service.startActivity(new Intent(service,MainActivity.class).putExtra(MainActivity.PERMISSION_GUIDE,true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));}
             public void openLanguageSettings(){closePopup();SystemSettings.language(service);}
             public void disableAccessibility(){closePopup();SystemSettings.accessibility(service);}
         },true);popup.addView(settingsPanel,new LinearLayout.LayoutParams(-1,0,1));

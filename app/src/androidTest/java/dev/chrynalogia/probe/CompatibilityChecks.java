@@ -39,6 +39,8 @@ final class CompatibilityChecks {
             onMain(runner,()->{
                 SettingsChecks.require(!shown[0].isShowing()&&prefs.getBoolean("compatibilityNoticeSeen",false),"Continue dismisses and remembers the warning");
                 SettingsChecks.require(!prefs.getBoolean("onboarding",true),"Warning does not choose a mode or alter onboarding");
+                View later=find(activity.getWindow().getDecorView(),activity.getString(R.string.guide_later));
+                SettingsChecks.require(later!=null&&later.performClick(),"Unsupported devices can defer the permission guide");
                 SettingsChecks.require(find(activity.getWindow().getDecorView(),activity.getString(R.string.choose_manual))!=null,"Normal onboarding remains available after warning");
                 SettingsChecks.require(notice[0].showIfNeeded()==null,"Acknowledged warning never repeats on launch");
                 View mode=find(activity.getWindow().getDecorView(),activity.getString(R.string.always));
@@ -54,7 +56,7 @@ final class CompatibilityChecks {
                 SettingsChecks.require(notice[0].showIfNeeded()==null,"Existing configured installations are not interrupted by a first-install warning");
             });
         } finally {onMain(runner,()->{if(notice[0]!=null)notice[0].destroy();activity.finish();});}
-        return 14;
+        return 15;
     }
     private static void onMain(Instrumentation runner,Runnable action) {
         java.util.concurrent.atomic.AtomicReference<Throwable> failure=new java.util.concurrent.atomic.AtomicReference<>();

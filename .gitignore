@@ -6,3 +6,4 @@ artifacts/
 *.iml
 .idea/
 .codex-remote-attachments/
+.signing/

@@ -30,7 +30,11 @@ public final class RenderChecks extends Instrumentation {
             }}catch(Exception ignored){}
         },"test-watchdog");watchdog.setDaemon(true);watchdog.start();
         try {
-            if(suite.equals("compatibility")) {
+            if(suite.equals("settingsTask")) {
+                passed+=SettingsTaskChecks.run(c,this);
+            } else if(suite.equals("permissions")) {
+                passed+=PermissionSetupChecks.run(c,this);
+            } else if(suite.equals("compatibility")) {
                 passed+=CompatibilityChecks.run(c,this);
             } else if(suite.equals("ui")) {
                 passed+=UiChecks.run(c,this);

@@ -27,11 +27,22 @@ Designed for Samsung Camera on the latest One UI, with Android 14 or newer. Test
 ## Getting started
 
 1. Install the APK manually. The app is not distributed through Google Play.
-2. Choose **Always on** or **Start manually**.
-3. Allow display over other apps and enable **Chrynalogia** in Accessibility. Manual mode also needs notification permission.
+2. Follow the illustrated setup guide to allow display over other apps and enable **Chrynalogia** in Accessibility.
+3. Choose **Always on** or **Start manually**. Manual mode also needs notification permission.
 4. Open Samsung Camera, then tap the Chrynalogia logo to access the grid menu.
 
 Grids are on-screen guides and do not appear in saved photos. Accessibility detects camera UI on your device; screens and photos are not uploaded.
+
+### Google Play Protect
+
+> [!note]
+> This app uses an accessibility service, so installation from a browser or file manager _**may be blocked by Play Protect.**_ We are preparing an appeal to request a review of this block. Thank you for your patience until the review is complete; approval and its timing are not guaranteed.
+
+Keeping Play Protect enabled is recommended. If you choose to install a release APK you trust, you can temporarily change the setting:
+
+1. Open **Google Play Store → profile icon in the upper right → Play Protect → Settings in the upper right**.
+2. Turn off **Scan apps with Play Protect** and complete any confirmation yourself.
+3. Install the APK, then turn **Scan apps with Play Protect** back on.
 
 ## Build
 
@@ -39,9 +50,11 @@ On Windows with PowerShell and JDK 17 or newer:
 
 ```powershell
 .\scripts\Bootstrap.ps1
-.\scripts\Build.ps1
+.\scripts\Release.ps1
 ```
 
-APK output: `app/build/outputs/apk/debug/app-debug.apk`.
+Signed release APK: `artifacts/Chrynalogia-v1.0.4.apk`. Keep a private backup of the `.signing` folder created on the first build; future updates require the same signing key. This folder is excluded from Git.
+
+For a debug build, use `.\scripts\Build.ps1`. The first release uses a different certificate, so uninstall the debug app before installing it.
 
 [Design notes](DESIGN.md) · [Development and verification history (한국어)](docs/DEVELOPMENT.ko.md)

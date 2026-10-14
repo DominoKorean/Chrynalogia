@@ -29,6 +29,7 @@ final class SettingsPanel extends FrameLayout {
         default void permissions(boolean overlay) {}
         default void disableAccessibility() {}
         default void openLanguageSettings() {}
+        default void openPermissionGuide() {}
     }
     private final GridSettings settings;
     private final Actions actions;
@@ -199,6 +200,7 @@ final class SettingsPanel extends FrameLayout {
         if(!Settings.canDrawOverlays(c))Ui.addButton(permissions,s(R.string.allow_overlay),()->actions.permissions(true));
         if(!CameraConnection.connected())Ui.addButton(permissions,s(R.string.allow_access),()->actions.permissions(false));
         Ui.note(permissions,s(R.string.welcome_privacy));
+        Ui.separator(permissions);Ui.actionRow(permissions,s(R.string.guide_reopen),actions::openPermissionGuide);
         for(LinearLayout group:new LinearLayout[]{appearance,run,permissions}) {
             LinearLayout.LayoutParams p=(LinearLayout.LayoutParams)group.getLayoutParams();p.setMargins(Ui.dp(c,10),Ui.dp(c,10),Ui.dp(c,10),Ui.dp(c,10));group.setLayoutParams(p);
             for(int i=0;i<group.getChildCount();i++)if(group.getChildAt(i) instanceof TextView t&&!(t instanceof Button)&&!t.isClickable())t.setPadding(0,Ui.dp(c,2),0,Ui.dp(c,10));

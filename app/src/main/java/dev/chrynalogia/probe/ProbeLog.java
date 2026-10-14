@@ -12,6 +12,7 @@ final class ProbeLog {
     static final String TAG = "CameraGridProbe";
     private static final long MAX_BYTES = 512 * 1024;
     static synchronized void event(Context context, String name, Object... values) {
+        if (!BuildConfig.DEBUG) return;
         try {
             JSONObject json = new JSONObject().put("time", Instant.now().toString()).put("event", name);
             for (int i = 0; i + 1 < values.length; i += 2) json.put(String.valueOf(values[i]), values[i + 1]);
@@ -29,6 +30,7 @@ final class ProbeLog {
         } catch (Exception error) { Log.e(TAG, "Diagnostic log failure", error); }
     }
     static synchronized void write(Context context, String name, String content) {
+        if (!BuildConfig.DEBUG) return;
         try (FileOutputStream stream = context.openFileOutput(name, Context.MODE_PRIVATE)) {
             stream.write(content.getBytes(StandardCharsets.UTF_8));
         } catch (Exception error) { Log.e(TAG, "Diagnostic write failure", error); }
