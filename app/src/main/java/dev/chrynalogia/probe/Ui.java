@@ -37,12 +37,21 @@ final class Ui {
     static void title(LinearLayout parent,String title) {TextView t=text(parent.getContext(),title,24);t.setTypeface(null,Typeface.BOLD);parent.addView(t);}
     static Button button(Context c,String label,Runnable action) {
         Button b=new Button(c);b.setText(label);b.setTextSize(18);b.setTextColor(ink(c));b.setAllCaps(false);
+        b.setStateListAnimator(null);b.setElevation(0);
         b.setTypeface(null,Typeface.BOLD);clickable(b,card(c),28);b.setMinHeight(dp(c,48));b.setMinimumHeight(dp(c,48));
         b.setPadding(dp(c,20),dp(c,12),dp(c,20),dp(c,12));b.setOnClickListener(v->action.run());return b;
     }
     static Button addButton(LinearLayout parent,String label,Runnable action) {
         Button b=button(parent.getContext(),label,action);
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(dp(parent.getContext(),12),dp(parent.getContext(),4),dp(parent.getContext(),12),dp(parent.getContext(),4));parent.addView(b,p);return b;
+    }
+    static ImageButton iconButton(Context c,int icon,String label,Runnable action) {
+        ImageButton button=new ImageButton(c);button.setImageDrawable(KitIcon.drawable(c,icon,ink(c)));button.setContentDescription(label);
+        button.setPadding(dp(c,12),dp(c,12),dp(c,12),dp(c,12));clickable(button,Color.TRANSPARENT,24);button.setOnClickListener(v->action.run());return button;
+    }
+    static TextView actionRow(LinearLayout parent,String label,Runnable action) {
+        Context c=parent.getContext();TextView row=text(c,label,18);row.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);row.setPadding(0,dp(c,12),0,dp(c,12));row.setMinimumHeight(dp(c,56));
+        row.setContentDescription(label);row.setFocusable(true);clickable(row,Color.TRANSPARENT,0);row.setOnClickListener(v->action.run());parent.addView(row,new LinearLayout.LayoutParams(-1,-2));return row;
     }
     static void note(LinearLayout parent,String text) {TextView v=text(parent.getContext(),text,14);v.setTextColor(secondary(parent.getContext()));parent.addView(v);}
     static CompoundButton toggle(LinearLayout parent,String label,boolean value,java.util.function.Consumer<Boolean> change) {
@@ -56,10 +65,10 @@ final class Ui {
     static void separator(LinearLayout parent) {
         Context c=parent.getContext();View v=new View(c);v.setBackgroundColor(divider(c));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(c,1));p.setMargins(dp(c,12),dp(c,4),dp(c,12),dp(c,4));parent.addView(v,p);
     }
-    static void slider(LinearLayout parent,String label,int min,int max,int value,java.util.function.IntConsumer change) {
-        slider(parent,label,min,max,value,n->Integer.toString(n),change);
+    static SeekBar slider(LinearLayout parent,String label,int min,int max,int value,java.util.function.IntConsumer change) {
+        return slider(parent,label,min,max,value,n->Integer.toString(n),change);
     }
-    static void slider(LinearLayout parent,String label,int min,int max,int value,java.util.function.IntFunction<String> format,java.util.function.IntConsumer change) {
+    static SeekBar slider(LinearLayout parent,String label,int min,int max,int value,java.util.function.IntFunction<String> format,java.util.function.IntConsumer change) {
         Context c=parent.getContext();TextView title=text(c,label,18);parent.addView(title);
         TextView t=text(c,format.apply(value),14);t.setTextColor(ACCENT);t.setPadding(dp(c,16),0,dp(c,16),0);parent.addView(t);
         SeekBar bar=new KitSlider(c);bar.setMin(min);bar.setMax(max);bar.setProgress(value);bar.setContentDescription(label);
@@ -68,6 +77,7 @@ final class Ui {
             public void onStartTrackingTouch(SeekBar b) {} public void onStopTrackingTouch(SeekBar b) {}
             public void onProgressChanged(SeekBar b,int n,boolean user) {t.setText(format.apply(n));if(user)change.accept(n);}
         });
+        return bar;
     }
     static TextView centered(Context c,String text,int size) {TextView t=text(c,text,size);t.setGravity(Gravity.CENTER);return t;}
 }

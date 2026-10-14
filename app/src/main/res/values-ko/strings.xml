@@ -1,5 +1,8 @@
 <resources>
     <string name="app_name">Chrynalogia</string>
+    <string name="compatibility_title">지원하지 않는 기기</string>
+    <string name="compatibility_message">이 앱은 One UI의 삼성 카메라에서만 작동합니다. 현재 기기에서는 사용이 불가능합니다. 특수한 환경이라면 계속 사용해 볼 수 있습니다.</string>
+    <string name="compatibility_continue">계속 사용</string>
     <string name="tab_grid">그리드</string>
     <string name="tab_line">라인</string>
     <string name="tab_settings">설정</string>
@@ -24,6 +27,7 @@
     <string name="invalid_hex">6자리 HEX 색상을 입력해 주세요.</string>
     <string name="opacity">불투명도</string>
     <string name="thickness">선 두께</string>
+    <string name="reset_line_style">불투명도와 선 두께 초기화</string>
     <string name="outline">자동 대비 아웃라인</string>
     <string name="outline_note">라인색에 따라 흰색 또는 검은색 테두리를 자동으로 적용합니다.</string>
     <string name="rotate_grid">그리드 90° 회전</string>
@@ -35,7 +39,10 @@
     <string name="manual">앱을 열 때 수동으로 켜기</string>
     <string name="run_note">항상 켜기는 카메라에서 자동 표시합니다. 수동은 앱을 열면 시작하고 알림에서 끌 수 있으며 재부팅하면 종료됩니다.</string>
     <string name="allow_stop">카메라 메뉴에 앱 끄기 버튼 표시</string>
-    <string name="stop_background">앱 백그라운드 실행 끄기</string>
+    <string name="stop_background">앱 백그라운드 실행</string>
+    <string name="execution_running">실행 중</string>
+    <string name="execution_off">꺼짐</string>
+    <string name="disable_access">접근성에서 Chrynalogia 끄기</string>
     <string name="language">언어</string>
     <string name="theme">앱 테마</string>
     <string name="system_default">시스템 기본값</string>
@@ -49,10 +56,6 @@
     <string name="overlay_needed">오버레이 허용 필요</string>
     <string name="allow_overlay">다른 앱 위에 표시 허용</string>
     <string name="allow_access">접근성에서 Chrynalogia 켜기</string>
-    <string name="manual_active">수동 실행 중</string>
-    <string name="manual_stopped">수동 실행 꺼짐</string>
-    <string name="stop_session">백그라운드 실행 끄기</string>
-    <string name="start_session">다시 켜기</string>
     <string name="permissions_first">오버레이와 접근성 권한을 먼저 허용해 주세요.</string>
     <string name="camera_missing">삼성 카메라를 찾지 못했습니다.</string>
     <string name="welcome_intro">삼성 카메라 위에 구도 그리드를 표시합니다.</string>

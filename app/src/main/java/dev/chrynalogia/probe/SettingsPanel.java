@@ -27,6 +27,8 @@ final class SettingsPanel extends FrameLayout {
         default void appearanceChanged() {changed();}
         default void startSession() {}
         default void permissions(boolean overlay) {}
+        default void disableAccessibility() {}
+        default void openLanguageSettings() {}
     }
     private final GridSettings settings;
     private final Actions actions;
@@ -39,8 +41,12 @@ final class SettingsPanel extends FrameLayout {
     private int page;
     private View expandedHeader;
     private AlertDialog choiceDialog;
+    private KitSwitch executionSwitch;
+    private boolean refreshingExecution;
     View dialogView() {return choiceDialog!=null&&choiceDialog.isShowing()?choiceDialog.getWindow().getDecorView():null;}
     void dismissChoices() {if(choiceDialog!=null)choiceDialog.dismiss();choiceDialog=null;}
+    int scrollPosition(){return scroll.getScrollY();}
+    void restoreScrollPosition(int y){scroll.post(()->scroll.scrollTo(0,y));}
 
     SettingsPanel(Context c,Actions actions) {this(c,actions,false);}
     SettingsPanel(Context c,Actions actions,boolean compact) {
@@ -55,7 +61,7 @@ final class SettingsPanel extends FrameLayout {
     private String s(int id) {return getContext().getString(id);}
     private void changed() {SettingsStore.saveChanges(settings);actions.changed();for(GridView v:previews)v.applySettings();}
     private void build() {
-        settings.reload();content.removeAllViews();previews.clear();tiles.clear();
+        settings.reload();content.removeAllViews();previews.clear();tiles.clear();executionSwitch=null;
         setBackgroundColor(Ui.bg(getContext()));
         if(page==0)grids();else if(page==1)lines();else preferences();
         navigation();
@@ -63,6 +69,10 @@ final class SettingsPanel extends FrameLayout {
     private void heading(String title,boolean logo) {
         Context c=getContext();LinearLayout header=Ui.column(c);header.setGravity(Gravity.CENTER);
         header.setPadding(Ui.dp(c,24),0,Ui.dp(c,24),0);
+        if(logo) {
+            ImageView mark=new ImageView(c);mark.setImageResource(R.drawable.app_logo);mark.setScaleType(ImageView.ScaleType.FIT_CENTER);mark.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(Ui.dp(c,112),Ui.dp(c,112));p.bottomMargin=Ui.dp(c,16);header.addView(mark,p);
+        }
         TextView t=Ui.centered(c,title,compact?24:36);t.setTypeface(null,Typeface.BOLD);header.addView(t);
         expandedHeader=header;
         content.addView(header,new LinearLayout.LayoutParams(-1,headerHeight()));
@@ -102,13 +112,14 @@ final class SettingsPanel extends FrameLayout {
             Button remove=Ui.button(c,s(R.string.delete_grid),()->removeImport(id));remove.setCompoundDrawablesRelative(KitIcon.drawable(c,R.raw.kit_delete,Ui.ink(c)),null,null,null);remove.setCompoundDrawableTintList(android.content.res.ColorStateList.valueOf(Ui.ink(c)));files.addView(remove);
         }
         Button add=Ui.addButton(files,s(R.string.import_grid),actions::importGrid);add.setCompoundDrawablesRelative(KitIcon.drawable(c,R.raw.kit_add,Ui.ink(c)),null,null,null);add.setCompoundDrawableTintList(android.content.res.ColorStateList.valueOf(Ui.ink(c)));
-        Ui.toggle(files,s(R.string.keep_aspect),settings.keepAspect,on->{settings.keepAspect=on;changed();});Ui.note(files,s(R.string.keep_aspect_note));
+        Ui.toggle(files,s(R.string.keep_aspect),settings.keepAspect,on->{settings.keepAspect=on;changed();});
+        TextView aspectNote=Ui.text(c,s(R.string.keep_aspect_note),14);aspectNote.setTextColor(Ui.secondary(c));aspectNote.setGravity(Gravity.START);aspectNote.setPadding(0,Ui.dp(c,2),Ui.dp(c,60),Ui.dp(c,10));files.addView(aspectNote);
     }
     private String gridName(String id){GridCatalog.Entry entry=GridCatalog.find(id);return s(entry==null?R.string.grid_custom:entry.nameRes());}
     private String gridDescription(String id){GridCatalog.Entry entry=GridCatalog.find(id);return s(entry==null?R.string.desc_custom:entry.descriptionRes());}
     private LinearLayout gridTile(String id,String name,String description) {
         Context c=getContext();LinearLayout tile=Ui.column(c);tile.setTag(id);tiles.add(tile);tile.setPadding(Ui.dp(c,6),Ui.dp(c,6),Ui.dp(c,6),Ui.dp(c,14));
-        GradientDrawable bg=Ui.shape(settings.selected.contains(id)?Ui.card(c):Color.TRANSPARENT,20,c);if(settings.selected.contains(id))bg.setStroke(Ui.dp(c,1),Color.WHITE);tile.setBackground(bg);tile.setSelected(settings.selected.contains(id));
+        GradientDrawable bg=Ui.shape(settings.selected.contains(id)?Ui.card(c):Color.TRANSPARENT,20,c);if(settings.selected.contains(id))bg.setStroke(Ui.dp(c,1),Ui.ink(c));tile.setBackground(bg);tile.setSelected(settings.selected.contains(id));
         GridView preview=new GridView(c,id);previews.add(preview);preview.setBackground(Ui.shape(Ui.surface(c),14,c));preview.setClipToOutline(true);
         tile.addView(preview,new LinearLayout.LayoutParams(-1,Ui.dp(c,compact?100:118)));
         TextView title=Ui.text(c,name,16);title.setPadding(Ui.dp(c,2),Ui.dp(c,10),Ui.dp(c,2),Ui.dp(c,3));title.setMaxLines(2);tile.addView(title);
@@ -138,7 +149,7 @@ final class SettingsPanel extends FrameLayout {
             choice.setOnClickListener(v->{settings.color=color;settings.customColorSelected=false;settings.outline=false;changed();rebuildAtSameScroll();});colors.addView(choice);Ui.separator(colors);
         }
         LinearLayout custom=new LinearLayout(c);custom.setGravity(Gravity.CENTER_VERTICAL);custom.setPadding(Ui.dp(c,12),Ui.dp(c,20),Ui.dp(c,12),Ui.dp(c,20));
-        RadioButton customChoice=radio(c,s(R.string.custom_color));customChoice.setChecked(settings.customColorSelected);custom.addView(customChoice,new LinearLayout.LayoutParams(0,-2,1));
+        RadioButton customChoice=radio(c,s(R.string.custom_color));customChoice.setPadding(0,0,0,0);customChoice.setChecked(settings.customColorSelected);custom.addView(customChoice,new LinearLayout.LayoutParams(0,-2,1));
         EditText hex=new EditText(c);hex.setSingleLine(true);hex.setTextColor(Ui.ink(c));hex.setTextSize(14);hex.setPadding(Ui.dp(c,12),Ui.dp(c,8),Ui.dp(c,12),Ui.dp(c,8));hex.setBackground(Ui.shape(Ui.surface(c),24,c));
         hex.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(6),(source,start,end,dest,dstart,dend)->source.subSequence(start,end).toString().matches("[0-9a-fA-F]*")?null:""});
         hex.setText(String.format(Locale.ROOT,"%06X",settings.customColor&0xffffff));hex.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD|android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
@@ -156,21 +167,33 @@ final class SettingsPanel extends FrameLayout {
         Ui.addButton(colors,s(R.string.apply_color),apply);
         hex.setOnEditorActionListener((v,action,event)->{if(action==android.view.inputmethod.EditorInfo.IME_ACTION_DONE){apply.run();c.getSystemService(android.view.inputmethod.InputMethodManager.class).hideSoftInputFromWindow(hex.getWindowToken(),0);return true;}return false;});
         LinearLayout styling=Ui.section(content);
-        Ui.slider(styling,s(R.string.opacity),0,100,Math.round(settings.opacity*100),n->c.getString(R.string.opacity_value,n),n->{settings.opacity=n/100f;changed();});Ui.separator(styling);
-        Ui.slider(styling,s(R.string.thickness),3,60,Math.round(settings.thickness*10),n->c.getString(R.string.thickness_value,n/10f),n->{settings.thickness=n/10f;changed();});Ui.separator(styling);
+        SeekBar opacity=Ui.slider(styling,s(R.string.opacity),0,100,Math.round(settings.opacity*100),n->c.getString(R.string.opacity_value,n),n->{settings.opacity=n/100f;changed();});Ui.separator(styling);
+        SeekBar thickness=Ui.slider(styling,s(R.string.thickness),3,60,Math.round(settings.thickness*10),n->c.getString(R.string.thickness_value,n/10f),n->{settings.thickness=n/10f;changed();});Ui.separator(styling);
+        View opacityTitle=styling.getChildAt(0);styling.removeViewAt(0);
+        LinearLayout styleHeader=new LinearLayout(c);styleHeader.setGravity(Gravity.CENTER_VERTICAL);styleHeader.addView(opacityTitle,new LinearLayout.LayoutParams(0,-2,1));
+        ImageButton reset=Ui.iconButton(c,R.raw.kit_refresh,s(R.string.reset_line_style),()->{settings.opacity=0.9f;settings.thickness=1.2f;changed();opacity.setProgress(90);thickness.setProgress(12);});
+        styleHeader.addView(reset,new LinearLayout.LayoutParams(Ui.dp(c,48),Ui.dp(c,48)));styling.addView(styleHeader,0);
         Ui.toggle(styling,s(R.string.outline),settings.outline,on->{settings.outline=on;changed();});Ui.note(styling,s(R.string.outline_note));
     }
     private void preferences() {
         Context c=getContext();heading(s(R.string.tab_settings),false);LinearLayout appearance=Ui.section(content);
         String tag=AppAppearance.language(c);String language=tag.startsWith("ko")?s(R.string.korean):tag.startsWith("en")?s(R.string.english):s(R.string.system_default);
-        preference(appearance,R.raw.kit_language,s(R.string.language),language,()->chooseLanguage());
+        preference(appearance,R.raw.kit_language,s(R.string.language),language,actions::openLanguageSettings);
         Ui.separator(appearance);String theme=AppAppearance.theme(c);
         preference(appearance,R.raw.kit_theme,s(R.string.theme),s(theme.equals("dark")?R.string.dark:theme.equals("light")?R.string.light:R.string.system_default),()->chooseTheme());
         LinearLayout run=Ui.section(content);RadioGroup modes=new RadioGroup(c);
         RadioButton always=radio(c,s(R.string.always));RadioButton manual=radio(c,s(R.string.manual));modes.addView(always);modes.addView(manual);modes.check(settings.runMode.equals("manual")?manual.getId():always.getId());run.addView(modes);
         modes.setOnCheckedChangeListener((group,id)->{settings.runMode=id==manual.getId()?"manual":"always";settings.save();actions.modeChanged(settings.runMode);});Ui.note(run,s(R.string.run_note));
-        if(settings.runMode.equals("manual")) {Ui.note(run,s(settings.active(c)?R.string.manual_active:R.string.manual_stopped));Ui.addButton(run,s(settings.active(c)?R.string.stop_session:R.string.start_session),settings.active(c)?actions::stop:actions::startSession);}
-        Ui.toggle(run,s(R.string.allow_stop),settings.allowStop,on->{settings.allowStop=on;changed();});Ui.addButton(run,s(R.string.stop_background),actions::stop);
+        Ui.toggle(run,s(R.string.allow_stop),settings.allowStop,on->{settings.allowStop=on;changed();});Ui.separator(run);
+        executionSwitch=new KitSwitch(c);executionSwitch.setContentDescription(s(R.string.stop_background));
+        executionSwitch.setIncludeFontPadding(false);executionSwitch.setMinHeight(Ui.dp(c,65));executionSwitch.setLineSpacing(Ui.dp(c,2),1);
+        run.addView(executionSwitch,new LinearLayout.LayoutParams(-1,-2));refreshExecutionState();
+        executionSwitch.setOnCheckedChangeListener((button,on)->{
+            if(refreshingExecution)return;
+            if(on)actions.startSession();else actions.stop();
+            refreshExecutionState();
+        });Ui.separator(run);
+        Ui.actionRow(run,s(R.string.disable_access),actions::disableAccessibility);
         LinearLayout permissions=Ui.section(content);
         Ui.note(permissions,s(!CameraConnection.connected()?R.string.access_needed:R.string.access_connected));Ui.note(permissions,s(Settings.canDrawOverlays(c)?R.string.overlay_allowed:R.string.overlay_needed));
         if(!Settings.canDrawOverlays(c))Ui.addButton(permissions,s(R.string.allow_overlay),()->actions.permissions(true));
@@ -178,31 +201,52 @@ final class SettingsPanel extends FrameLayout {
         Ui.note(permissions,s(R.string.welcome_privacy));
         for(LinearLayout group:new LinearLayout[]{appearance,run,permissions}) {
             LinearLayout.LayoutParams p=(LinearLayout.LayoutParams)group.getLayoutParams();p.setMargins(Ui.dp(c,10),Ui.dp(c,10),Ui.dp(c,10),Ui.dp(c,10));group.setLayoutParams(p);
-            for(int i=0;i<group.getChildCount();i++)if(group.getChildAt(i) instanceof TextView t&&!(t instanceof Button))t.setPadding(0,Ui.dp(c,2),0,Ui.dp(c,10));
+            for(int i=0;i<group.getChildCount();i++)if(group.getChildAt(i) instanceof TextView t&&!(t instanceof Button)&&!t.isClickable())t.setPadding(0,Ui.dp(c,2),0,Ui.dp(c,10));
         }
+    }
+    void refreshExecutionState(){
+        if(executionSwitch==null)return;
+        boolean active=new GridSettings(getContext()).active(getContext());
+        String title=s(R.string.stop_background),detail=s(active?R.string.execution_running:R.string.execution_off);
+        android.text.SpannableString text=new android.text.SpannableString(title+"\n"+detail);
+        text.setSpan(new android.text.style.AbsoluteSizeSpan(14,true),title.length()+1,text.length(),0);
+        text.setSpan(new android.text.style.ForegroundColorSpan(active?Ui.ACCENT:Ui.secondary(getContext())),title.length()+1,text.length(),0);
+        refreshingExecution=true;
+        try{executionSwitch.setChecked(active);executionSwitch.setText(text);executionSwitch.setStateDescription(detail);}
+        finally{refreshingExecution=false;}
     }
     private RadioButton radio(Context c,String text) {RadioButton b=new RadioButton(c);b.setId(View.generateViewId());b.setText(text);b.setTextColor(Ui.ink(c));b.setTextSize(18);b.setMinHeight(Ui.dp(c,52));b.setButtonTintList(Ui.checks(c));return b;}
     private void preference(LinearLayout parent,int icon,String title,String value,Runnable action) {
         Context c=getContext();LinearLayout row=new LinearLayout(c);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(0,Ui.dp(c,10),0,Ui.dp(c,10));row.setContentDescription(title);Ui.clickable(row,Ui.card(c),20);
         row.addView(new KitIcon(c,icon,Ui.ink(c)),new LinearLayout.LayoutParams(Ui.dp(c,24),Ui.dp(c,24)));LinearLayout labels=Ui.column(c);labels.setPadding(Ui.dp(c,20),0,0,0);TextView primary=Ui.text(c,title,18);primary.setPadding(0,0,0,0);labels.addView(primary);TextView detail=Ui.text(c,value,14);detail.setPadding(0,Ui.dp(c,2),0,0);detail.setTextColor(Ui.ACCENT);labels.addView(detail);row.addView(labels,new LinearLayout.LayoutParams(0,-2,1));row.setMinimumHeight(Ui.dp(c,65));row.setOnClickListener(v->action.run());parent.addView(row);
     }
-    private void chooseLanguage() {
-        String[] tags={"","ko","en"};String[] labels={s(R.string.system_default),s(R.string.korean),s(R.string.english)};String current=AppAppearance.language(getContext());int selected=current.startsWith("ko")?1:current.startsWith("en")?2:0;
-        showChoices(s(R.string.language),labels,selected,n->{AppAppearance.setLanguage(getContext(),tags[n]);actions.appearanceChanged();});
-    }
     private void chooseTheme() {
         String[] modes={"system","light","dark"};String[] labels={s(R.string.system_default),s(R.string.light),s(R.string.dark)};String current=AppAppearance.theme(getContext());int selected=current.equals("light")?1:current.equals("dark")?2:0;
         showChoices(s(R.string.theme),labels,selected,n->{AppAppearance.setTheme(getContext(),modes[n]);actions.appearanceChanged();});
     }
     private void showChoices(String title,String[] labels,int selected,java.util.function.IntConsumer choose) {
-        dismissChoices();AlertDialog dialog=new AlertDialog.Builder(getContext()).setTitle(title).setSingleChoiceItems(labels,selected,(d,n)->{d.dismiss();choose.accept(n);}).setNegativeButton(s(R.string.close),null).create();
+        dismissChoices();Context c=getContext();AlertDialog dialog=new AlertDialog.Builder(c).create();
+        LinearLayout body=Ui.column(c);body.setPadding(Ui.dp(c,24),Ui.dp(c,24),Ui.dp(c,24),Ui.dp(c,12));body.setBackground(Ui.shape(Ui.card(c),28,c));
+        TextView heading=Ui.text(c,title,24);heading.setTypeface(null,Typeface.BOLD);heading.setPadding(0,0,0,Ui.dp(c,16));body.addView(heading);
+        RadioGroup choices=new RadioGroup(c);
+        for(int i=0;i<labels.length;i++){
+            int index=i;RadioButton row=radio(c,labels[i]);row.setIncludeFontPadding(false);row.setPadding(0,Ui.dp(c,12),0,Ui.dp(c,12));row.setMinHeight(Ui.dp(c,56));
+            choices.addView(row,new RadioGroup.LayoutParams(-1,-2));row.setChecked(i==selected);
+            row.setOnClickListener(v->{dialog.dismiss();choose.accept(index);});
+        }
+        body.addView(choices);
+        TextView close=Ui.text(c,s(R.string.close),18);close.setTextColor(Ui.ACCENT);close.setTypeface(null,Typeface.BOLD);close.setGravity(Gravity.END|Gravity.CENTER_VERTICAL);close.setMinimumHeight(Ui.dp(c,48));
+        Ui.clickable(close,Color.TRANSPARENT,24);close.setOnClickListener(v->dialog.dismiss());body.addView(close);
+        dialog.setView(body,0,0,0,0);
         choiceDialog=dialog;dialog.setOnDismissListener(d->{if(choiceDialog==dialog)choiceDialog=null;});
         if(compact&&dialog.getWindow()!=null)dialog.getWindow().setType(android.view.WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
         dialog.show();
+        android.view.Window w=dialog.getWindow();
+        if(w!=null){w.setBackgroundDrawable(Ui.shape(Ui.card(c),28,c));w.getDecorView().setPadding(0,0,0,0);w.setLayout(Math.min(Ui.dp(c,420),getResources().getDisplayMetrics().widthPixels-Ui.dp(c,48)),android.view.WindowManager.LayoutParams.WRAP_CONTENT);}
     }
     private void navigation() {
         if(getChildCount()>1)removeViewAt(1);Context c=getContext();BackdropBar shell=new BackdropBar(c,content);LinearLayout bar=new LinearLayout(c);bar.setGravity(Gravity.CENTER);bar.setPadding(Ui.dp(c,4),Ui.dp(c,4),Ui.dp(c,4),Ui.dp(c,4));bar.setBackground(Ui.shape(AppAppearance.dark(c)?0x992e2e30:0x99ffffff,79,c));shell.setElevation(Ui.dp(c,8));
-        int[] labels={R.string.tab_grid,R.string.tab_line,R.string.tab_settings};int[] icons={R.raw.kit_grid,R.raw.kit_line,R.raw.kit_settings};
+        int[] labels={R.string.tab_grid,R.string.tab_line,R.string.tab_settings};int[] icons={R.raw.kit_grid,R.raw.kit_filter_tab,R.raw.kit_settings};
         for(int i=0;i<3;i++) {
             int selected=i;LinearLayout tab=Ui.column(c);tab.setGravity(Gravity.CENTER);tab.setContentDescription(s(labels[i]));tab.setSelected(page==i);Ui.clickable(tab,page==i?(AppAppearance.dark(c)?0xb33d3d3d:0xccf8f9f8):Color.TRANSPARENT,39);
             tab.addView(new KitIcon(c,icons[i],page==i?Ui.ink(c):Ui.secondary(c)),new LinearLayout.LayoutParams(Ui.dp(c,22),Ui.dp(c,22)));

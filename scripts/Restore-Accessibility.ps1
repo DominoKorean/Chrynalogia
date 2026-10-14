@@ -13,8 +13,8 @@ function Tap-SystemText([string]$Text) {
     Start-Sleep -Milliseconds 400
 }
 # Use the Settings UI to restart only the app's already-authorized service.
-Invoke-ProbeAdb shell am start -a android.settings.ACCESSIBILITY_SETTINGS | Out-Null
-Start-Sleep -Milliseconds 400
+Invoke-ProbeAdb shell am start --activity-clear-top -a android.settings.ACCESSIBILITY_SETTINGS | Out-Null
+Start-Sleep -Milliseconds 800
 $current=System-Nodes
 if(-not ($current | Where-Object {$_.text -eq 'Chrynalogia 바로가기'})) {
     if(-not ($current | Where-Object {$_.text -eq 'Activity Record'})) {Tap-SystemText '설치된 앱'}

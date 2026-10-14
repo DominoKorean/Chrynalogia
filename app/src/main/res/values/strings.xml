@@ -1,5 +1,8 @@
 <resources>
     <string name="app_name">Chrynalogia</string>
+    <string name="compatibility_title">Unsupported device</string>
+    <string name="compatibility_message">This app only works with Samsung Camera on One UI. It cannot be used on this device. You can still continue if you have a special setup.</string>
+    <string name="compatibility_continue">Continue anyway</string>
     <string name="tab_grid">Grid</string>
     <string name="tab_line">Line</string>
     <string name="tab_settings">Settings</string>
@@ -24,6 +27,7 @@
     <string name="invalid_hex">Enter six hexadecimal digits (RRGGBB).</string>
     <string name="opacity">Opacity</string>
     <string name="thickness">Line thickness</string>
+    <string name="reset_line_style">Reset opacity and line thickness</string>
     <string name="outline">Contrast outline</string>
     <string name="outline_note">Automatically adds a white or black edge to contrast with the line color.</string>
     <string name="rotate_grid">Rotate grid 90°</string>
@@ -35,7 +39,10 @@
     <string name="manual">Start when opening the app</string>
     <string name="run_note">Always on displays the grid whenever the camera opens. Manual starts when you open this app and ends from the notification or on reboot.</string>
     <string name="allow_stop">Show stop button in the camera menu</string>
-    <string name="stop_background">Stop background overlay</string>
+    <string name="stop_background">App background activity</string>
+    <string name="execution_running">Running</string>
+    <string name="execution_off">Off</string>
+    <string name="disable_access">Disable Chrynalogia in Accessibility</string>
     <string name="language">Language</string>
     <string name="theme">App theme</string>
     <string name="system_default">System default</string>
@@ -49,10 +56,6 @@
     <string name="overlay_needed">Overlay permission needed</string>
     <string name="allow_overlay">Allow display over other apps</string>
     <string name="allow_access">Enable Chrynalogia in Accessibility</string>
-    <string name="manual_active">Manual overlay is running</string>
-    <string name="manual_stopped">Manual overlay is stopped</string>
-    <string name="stop_session">Stop overlay session</string>
-    <string name="start_session">Start again</string>
     <string name="permissions_first">Allow overlay and accessibility permissions first.</string>
     <string name="camera_missing">Samsung Camera was not found.</string>
     <string name="welcome_intro">Composition grids over Samsung Camera.</string>

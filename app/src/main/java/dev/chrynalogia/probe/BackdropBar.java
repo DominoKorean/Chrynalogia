@@ -16,6 +16,7 @@ final class BackdropBar extends FrameLayout {
     private final android.view.ViewTreeObserver.OnPreDrawListener contentChanges;
     BackdropBar(Context c,View source) {
         super(c);this.source=source;contentChanges=()->{if(this.source.isDirty())updateBackdrop();return true;};setClipToOutline(true);setBackground(Ui.shape(Color.TRANSPARENT,79,c));
+        setOutlineProvider(new android.view.ViewOutlineProvider(){@Override public void getOutline(View view,Outline outline){outline.setRoundRect(0,0,view.getWidth(),view.getHeight(),Ui.dp(c,79));outline.setAlpha(1f);}});
         backdrop=new ImageView(c);backdrop.setScaleType(ImageView.ScaleType.FIT_XY);
         backdrop.setRenderEffect(RenderEffect.createBlurEffect(Ui.dp(c,14),Ui.dp(c,14),Shader.TileMode.CLAMP));
         addView(backdrop,new LayoutParams(-1,-1));

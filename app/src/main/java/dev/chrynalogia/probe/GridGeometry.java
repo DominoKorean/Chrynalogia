@@ -7,6 +7,35 @@ import java.util.List;
 final class GridGeometry {
     static final String[] IDS=GridCatalog.entries().stream().map(GridCatalog.Entry::id).toArray(String[]::new);
     record Segment(float x1, float y1, float x2, float y2) {}
+    record Rectangle(float left,float top,float right,float bottom) {}
+    record Arc(float centerX,float centerY,float radius,float startDegrees,float sweepDegrees) {
+        float startX(){return centerX+radius*(float)Math.cos(Math.toRadians(startDegrees));}
+        float startY(){return centerY+radius*(float)Math.sin(Math.toRadians(startDegrees));}
+        float endX(){return centerX+radius*(float)Math.cos(Math.toRadians(startDegrees+sweepDegrees));}
+        float endY(){return centerY+radius*(float)Math.sin(Math.toRadians(startDegrees+sweepDegrees));}
+    }
+    record Spiral(Rectangle frame,List<Rectangle> squares,List<Segment> partitions,List<Arc> arcs) {}
+    static Spiral spiral(float w,float h) {
+        double phi=(1+Math.sqrt(5))/2;
+        float rw=(float)Math.min(w,h*phi),rh=(float)(rw/phi);
+        float left=(w-rw)/2,top=(h-rh)/2,right=left+rw,bottom=top+rh;
+        Rectangle frame=new Rectangle(left,top,right,bottom);
+        List<Rectangle> squares=new ArrayList<>();List<Segment> partitions=new ArrayList<>();List<Arc> arcs=new ArrayList<>();
+        add(partitions,left,top,right,top);add(partitions,right,top,right,bottom);
+        add(partitions,right,bottom,left,bottom);add(partitions,left,bottom,left,top);
+        for(int i=0;i<12;i++) {
+            float size=Math.min(right-left,bottom-top),cx,cy;
+            Rectangle square;
+            switch(i%4) {
+                case 0 -> {square=new Rectangle(right-size,top,right,bottom);cx=right-size;cy=top;right-=size;add(partitions,right,top,right,bottom);}
+                case 1 -> {square=new Rectangle(left,bottom-size,right,bottom);cx=right;cy=bottom-size;bottom-=size;add(partitions,left,bottom,right,bottom);}
+                case 2 -> {square=new Rectangle(left,top,left+size,bottom);cx=left+size;cy=bottom;left+=size;add(partitions,left,top,left,bottom);}
+                default -> {square=new Rectangle(left,top,right,top+size);cx=left;cy=top+size;top+=size;add(partitions,left,top,right,top);}
+            }
+            squares.add(square);arcs.add(new Arc(cx,cy,size,(i%4)*90,90));
+        }
+        return new Spiral(frame,List.copyOf(squares),List.copyOf(partitions),List.copyOf(arcs));
+    }
     static List<Segment> lines(String id, float w, float h, int columns, int rows) {
         List<Segment> result = new ArrayList<>();
         switch (id) {
@@ -29,7 +58,13 @@ final class GridGeometry {
                 if(w>=h) { add(result,d,0,d,h); add(result,w-d,0,w-d,h); }
                 else { add(result,0,d,w,d); add(result,0,h-d,w,h-d); }
             }
-            case "dynamic" -> { diagonals(result,w,h); triangle(result,w,h,true); grid(result,w,h,new float[]{0.5f}); }
+            case "dynamic" -> {
+                diagonals(result,w,h);
+                float dx=Math.min(w,h*h/w),dy=Math.min(h,w*w/h);
+                add(result,w,0,w-dx,dy);add(result,0,h,dx,h-dy);
+                add(result,0,0,dx,dy);add(result,w,h,w-dx,h-dy);
+                grid(result,w,h,new float[]{0.5f});
+            }
             default -> { }
         }
         return result;

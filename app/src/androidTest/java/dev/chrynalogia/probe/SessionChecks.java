@@ -6,7 +6,8 @@ import android.content.Intent;
 final class SessionChecks {
     static int run(Context c,Instrumentation runner) throws Exception {
         SettingsStore.update(c,s->{s.onboarding=true;s.runMode="manual";});
-        MainActivity activity=(MainActivity)runner.startActivitySync(new Intent(c,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        // startActivitySync waits for creation; singleTop reuse only delivers onNewIntent.
+        MainActivity activity=(MainActivity)runner.startActivitySync(new Intent(c,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK));
         runner.runOnMainSync(()->SessionController.stop(c));
         runner.waitForIdleSync();
         SettingsChecks.require(!SessionController.active(c),"Stop did not deactivate manual session");

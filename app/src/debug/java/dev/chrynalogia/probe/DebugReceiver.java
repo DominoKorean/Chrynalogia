@@ -46,6 +46,7 @@ public final class DebugReceiver extends BroadcastReceiver {
                 service.setDebugBounds(new Rect(left, top, right, bottom));
             }
             case "reset-bounds" -> service.setDebugBounds(null);
+            case "ui-orientation" -> service.setDebugUiOrientation(intent.getIntExtra("quarter",-1));
             case "capture" -> { }
             default -> { setResultCode(2); setResultData("Unknown command"); return; }
         }

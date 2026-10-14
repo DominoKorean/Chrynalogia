@@ -22,7 +22,7 @@ final class KitSlider extends SeekBar {
         canvas.drawRoundRect(left,y-half,right,y+half,half,half,paint);
         paint.setColor(Ui.ACCENT);
         canvas.drawRoundRect(getLayoutDirection()==LAYOUT_DIRECTION_RTL?x:left,y-half,getLayoutDirection()==LAYOUT_DIRECTION_RTL?right:x,y+half,half,half,paint);
-        paint.setColor(Color.BLACK);canvas.drawCircle(x,y,radius,paint);
+        paint.setColor(Ui.surface(getContext()));canvas.drawCircle(x,y,radius,paint);
         paint.setStyle(Paint.Style.STROKE);paint.setColor(Ui.ACCENT);paint.setStrokeWidth(Ui.dp(getContext(),2));canvas.drawCircle(x,y,radius-Ui.dp(getContext(),1),paint);
     }
 }

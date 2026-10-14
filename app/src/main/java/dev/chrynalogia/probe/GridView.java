@@ -15,6 +15,7 @@ import org.json.JSONObject;
 final class GridView extends View {
     private final Paint line=new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Matrix rabatmentTurn=new Matrix();
+    private final Matrix gridTurn=new Matrix();
     private final Path rabatmentPath=new Path();
     private final Map<String,Bitmap> bitmaps=new HashMap<>();
     private final Map<String,SVG> svgs=new HashMap<>();
@@ -27,6 +28,7 @@ final class GridView extends View {
     private GridSettings settings;
     private final String previewId;
     private boolean firstFrame=true;
+    private int displayQuarterTurn;
     GridView(Context context) {this(context,null);}
     GridView(Context context,String previewId) {
         super(context); this.previewId=previewId;
@@ -34,6 +36,11 @@ final class GridView extends View {
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         setBackgroundColor(Color.TRANSPARENT);
         applySettings();
+    }
+    void setDisplayQuarterTurn(int surfaceRotation) {
+        int latest=previewId==null?Math.floorMod(surfaceRotation,4):0;
+        if(displayQuarterTurn==latest)return;
+        displayQuarterTurn=latest;invalidate();
     }
     void applySettings() {
         GridSettings latest=new GridSettings(getContext());
@@ -70,26 +77,30 @@ final class GridView extends View {
         if(w<=0 || h<=0) return;
         canvas.save(); canvas.clipRect(0,0,w,h);
         int rotation=previewId==null||settings.selected.contains(previewId)?settings.rotation:0;
-        float dw=rotation%2==0?w:h, dh=rotation%2==0?h:w;
+        GridOrientation.Transform turn=GridOrientation.transform(w,h,rotation,displayQuarterTurn,settings.flipX,settings.flipY);
+        float dw=turn.width(),dh=turn.height();gridTurn.setValues(turn.values());
+        int lineColor=GridOrientation.lineColor(previewId!=null,AppAppearance.dark(getContext()),settings.color);
         float density=getResources().getDisplayMetrics().density;
         float stroke=settings.thickness*density;
         Set<String> ids=previewId==null?settings.selected:Set.of(previewId);
         for(String id:ids) {
-            canvas.save();canvas.translate(w/2,h/2);canvas.scale(settings.flipX?-1:1,settings.flipY?-1:1);
-            if(id.startsWith("file_")) {canvas.rotate(rotation*90);canvas.translate(-dw/2,-dh/2);drawImport(canvas,id,dw,dh,stroke);canvas.restore();continue;}
+            canvas.save();
+            if(id.startsWith("file_")) {canvas.concat(gridTurn);drawImport(canvas,id,dw,dh,stroke,lineColor);canvas.restore();continue;}
             Path path;
             if(id.equals("rabatment")) {
                 // Rebuilding on swapped axes cancels this grid's turn. Fit the path, keeping stroke width constant.
-                rabatmentPath.set(path(id,w,h));path=rabatmentPath;rabatmentTurn.setTranslate(-w/2,-h/2);rabatmentTurn.postRotate(rotation*90);
-                if(rotation%2!=0)rabatmentTurn.postScale(w/h,h/w);path.transform(rabatmentTurn);
+                float pw=displayQuarterTurn%2==0?w:h,ph=displayQuarterTurn%2==0?h:w;
+                canvas.translate(w/2,h/2);canvas.rotate(-displayQuarterTurn*90);canvas.scale(settings.flipX?-1:1,settings.flipY?-1:1);
+                rabatmentPath.set(path(id,pw,ph));path=rabatmentPath;rabatmentTurn.setTranslate(-pw/2,-ph/2);rabatmentTurn.postRotate(rotation*90);
+                if(rotation%2!=0)rabatmentTurn.postScale(pw/ph,ph/pw);path.transform(rabatmentTurn);
             } else {
                 // Preserve the spiral's proportions, 45-degree guides and imported-grid behavior.
-                canvas.rotate(rotation*90);canvas.translate(-dw/2,-dh/2);path=path(id,dw,dh);
+                canvas.concat(gridTurn);path=path(id,dw,dh);
             }
             line.setStyle(Paint.Style.STROKE); line.setStrokeCap(Paint.Cap.BUTT);
-            line.setColor(OutlineColor.forLine(settings.color)); line.setAlpha(Math.round(settings.opacity*255));
+            line.setColor(OutlineColor.forLine(lineColor)); line.setAlpha(Math.round(settings.opacity*255));
             if(settings.outline) {line.setStrokeWidth(stroke+1.3f*density);canvas.drawPath(path,line);}
-            line.setColor(settings.color); line.setAlpha(Math.round(settings.opacity*255));line.setStrokeWidth(stroke);
+            line.setColor(lineColor); line.setAlpha(Math.round(settings.opacity*255));line.setStrokeWidth(stroke);
             canvas.drawPath(path,line);
             canvas.restore();
         }
@@ -103,28 +114,19 @@ final class GridView extends View {
         Path cached=paths.get(key);if(cached!=null)return cached;
         Path path=new Path();
         if(id.equals("spiral")) {
-            float rw=Math.min(w,h*1.618034f), rh=rw/1.618034f;
-            float ox=(w-rw)/2, oy=(h-rh)/2;
-            double k=Math.log(1.61803398875)/(Math.PI/2);
-            double minX=Double.MAX_VALUE,minY=minX,maxX=-minX,maxY=-minX;
-            for(int i=0;i<=720;i++) {
-                double angle=i*Math.PI/180, r=Math.exp(k*angle);
-                double x=r*Math.cos(angle),y=r*Math.sin(angle);
-                minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);
-            }
-            double scale=Math.min(rw/(maxX-minX),rh/(maxY-minY));
-            float px=ox+(rw-(float)((maxX-minX)*scale))/2, py=oy+(rh-(float)((maxY-minY)*scale))/2;
-            for(int i=0;i<=720;i++) {
-                double a=i*Math.PI/180,r=Math.exp(k*a);
-                float x=px+(float)((r*Math.cos(a)-minX)*scale),y=py+(float)((r*Math.sin(a)-minY)*scale);
-                if(i==0) path.moveTo(x,y);else path.lineTo(x,y);
+            GridGeometry.Spiral spiral=GridGeometry.spiral(w,h);
+            for(GridGeometry.Segment s:spiral.partitions()) {path.moveTo(s.x1(),s.y1());path.lineTo(s.x2(),s.y2());}
+            boolean first=true;
+            for(GridGeometry.Arc arc:spiral.arcs()) {
+                RectF circle=new RectF(arc.centerX()-arc.radius(),arc.centerY()-arc.radius(),arc.centerX()+arc.radius(),arc.centerY()+arc.radius());
+                path.arcTo(circle,arc.startDegrees(),arc.sweepDegrees(),first);first=false;
             }
         } else for(GridGeometry.Segment s:GridGeometry.lines(id,w,h,settings.columns,settings.rows)) {
             path.moveTo(s.x1(),s.y1());path.lineTo(s.x2(),s.y2());
         }
         paths.put(key,path);return path;
     }
-    private void drawImport(Canvas canvas,String id,float w,float h,float stroke) {
+    private void drawImport(Canvas canvas,String id,float w,float h,float stroke,int lineColor) {
         JSONObject data=null;
         for(int i=0;i<settings.imports.length();i++) if(id.equals(settings.imports.optJSONObject(i).optString("id"))) {data=settings.imports.optJSONObject(i);break;}
         if(data==null) return;
@@ -132,8 +134,8 @@ final class GridView extends View {
         GridRenderKey key=new GridRenderKey(id,(int)w,(int)h,settings.rotation,settings.columns,settings.rows,stroke,settings.keepAspect,settings.outline);
         GridRenderKey edgeKey=new GridRenderKey(id+"-outline",(int)w,(int)h,settings.rotation,settings.columns,settings.rows,stroke,settings.keepAspect,settings.outline);
         try {
-            line.setStyle(Paint.Style.FILL);line.setColor(settings.color);line.setAlpha(Math.round(settings.opacity*255));
-            line.setColorFilter(new PorterDuffColorFilter(settings.color,PorterDuff.Mode.SRC_IN));
+            line.setStyle(Paint.Style.FILL);line.setColor(lineColor);line.setAlpha(Math.round(settings.opacity*255));
+            line.setColorFilter(new PorterDuffColorFilter(lineColor,PorterDuff.Mode.SRC_IN));
             if(data.optString("extension").equals(".svg")) {
                 SVG svg=svgs.get(id);
                 Picture picture=pictures.get(key);
@@ -156,9 +158,9 @@ final class GridView extends View {
                             .css("* { stroke: white !important; stroke-width: "+((stroke+1.3f*getResources().getDisplayMetrics().density)*basis/Math.max(w,h))+" !important; fill: none !important; }");
                         border=new Picture();Canvas recording=border.beginRecording((int)w,(int)h);svg.renderToCanvas(recording,options);border.endRecording();pictures.put(edgeKey,border);
                     }
-                    line.setColorFilter(new PorterDuffColorFilter(OutlineColor.forLine(settings.color),PorterDuff.Mode.SRC_IN));
+                    line.setColorFilter(new PorterDuffColorFilter(OutlineColor.forLine(lineColor),PorterDuff.Mode.SRC_IN));
                     int layer=canvas.saveLayer(0,0,w,h,line);canvas.drawPicture(border);canvas.restoreToCount(layer);
-                    line.setColorFilter(new PorterDuffColorFilter(settings.color,PorterDuff.Mode.SRC_IN));
+                    line.setColorFilter(new PorterDuffColorFilter(lineColor,PorterDuff.Mode.SRC_IN));
                 }
                 int layer=canvas.saveLayer(0,0,w,h,line);canvas.drawPicture(picture);canvas.restoreToCount(layer);
             } else {
@@ -170,12 +172,12 @@ final class GridView extends View {
                     destination.set((w-bw)/2,(h-bh)/2,(w+bw)/2,(h+bh)/2);
                 }
                 if(settings.outline) {
-                    line.setColorFilter(new PorterDuffColorFilter(OutlineColor.forLine(settings.color),PorterDuff.Mode.SRC_IN));
+                    line.setColorFilter(new PorterDuffColorFilter(OutlineColor.forLine(lineColor),PorterDuff.Mode.SRC_IN));
                     float edge=0.65f*getResources().getDisplayMetrics().density;
                     for(int x=-1;x<=1;x++)for(int y=-1;y<=1;y++)if(x!=0||y!=0) {
                         RectF border=new RectF(destination);border.offset(x*edge,y*edge);canvas.drawBitmap(bitmap,null,border,line);
                     }
-                    line.setColorFilter(new PorterDuffColorFilter(settings.color,PorterDuff.Mode.SRC_IN));
+                    line.setColorFilter(new PorterDuffColorFilter(lineColor,PorterDuff.Mode.SRC_IN));
                 }
                 canvas.drawBitmap(bitmap,null,destination,line);
             }

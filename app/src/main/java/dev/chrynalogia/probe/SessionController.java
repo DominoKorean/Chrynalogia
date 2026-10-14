@@ -28,6 +28,6 @@ final class SessionController {
     static synchronized void stop(Context c){lifetime.request();new GridSettings(c).stop();c.stopService(new Intent(c,ManualSessionService.class));CameraConnection.requestRefresh();}
     static synchronized void clearForeground(Context c){lifetime.request();c.stopService(new Intent(c,ManualSessionService.class));CameraConnection.requestRefresh();}
     static synchronized boolean changeMode(Context c,String mode){lifetime.request();SettingsStore.update(c,s->s.runMode="manual".equals(mode)?"manual":"always");if(!"manual".equals(mode))c.stopService(new Intent(c,ManualSessionService.class));return requestStart(c);}
-    static void foregroundReady(Context c,long generation){lifetime.ready(c,generation);CameraConnection.requestRefresh();}
-    static synchronized void destroyed(Context c,long generation){if(lifetime.ended(c,generation)&&new GridSettings(c).runMode.equals("manual"))new GridSettings(c).stop();CameraConnection.requestRefresh();}
+    static void foregroundReady(Context c,long generation){lifetime.ready(c,generation);CameraConnection.requestRefresh();MainActivity.refreshSessionState();}
+    static synchronized void destroyed(Context c,long generation){if(lifetime.ended(c,generation)&&new GridSettings(c).runMode.equals("manual"))new GridSettings(c).stop();CameraConnection.requestRefresh();MainActivity.refreshSessionState();}
 }

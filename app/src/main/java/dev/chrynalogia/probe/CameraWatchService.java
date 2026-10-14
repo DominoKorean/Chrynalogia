@@ -32,6 +32,11 @@ public final class CameraWatchService extends AccessibilityService {
     private int reconcileCount;
     private android.content.SharedPreferences.OnSharedPreferenceChangeListener preferenceListener;
     private Rect lastBounds;
+    private Rect lastCameraWindow;
+    private int lastCameraDisplay;
+    private int lastCameraWindowId=-1;
+    private long lastCameraSeen;
+    private long configurationHoldUntil;
     private Rect debugBounds;
     private Rect systemWindowBounds;
     private Rect contentWindowBounds;
@@ -91,7 +96,7 @@ public final class CameraWatchService extends AccessibilityService {
         }
     }
 
-    private record CameraWindow(AccessibilityNodeInfo root, Rect bounds, String packageName) {}
+    private record CameraWindow(AccessibilityNodeInfo root, Rect bounds, String packageName,int id) {}
     private CameraWindow focusedWindow() {
         List<AccessibilityWindowInfo> windows = getWindows();
         AccessibilityWindowInfo application = null;
@@ -110,7 +115,7 @@ public final class CameraWatchService extends AccessibilityService {
             systemWindowBounds = new Rect(bounds);
             // A system dialog / notification shade must hide the grid even if camera stays behind it.
             if (window.getType() != AccessibilityWindowInfo.TYPE_APPLICATION) {
-                return new CameraWindow(null, bounds, "system-window");
+                return new CameraWindow(null, bounds, "system-window",window.getId());
             }
             // After logical display/DPI changes Samsung can report window bounds in
             // a different scale. The root and preview nodes share screen coordinates.
@@ -119,24 +124,27 @@ public final class CameraWatchService extends AccessibilityService {
                 if (!rootBounds.isEmpty()) bounds = rootBounds;
             }
             contentWindowBounds = new Rect(bounds);
-            return new CameraWindow(root, bounds, pkg);
+            return new CameraWindow(root, bounds, pkg,window.getId());
         }
         AccessibilityNodeInfo root = getRootInActiveWindow();
-        if (root == null) return new CameraWindow(null, new Rect(), "unavailable");
+        if (root == null) return new CameraWindow(null, new Rect(), "unavailable",-1);
         Rect bounds = new Rect(); root.getBoundsInScreen(bounds);
         if (bounds.isEmpty()) bounds = manager.getCurrentWindowMetrics().getBounds();
         contentWindowBounds = new Rect(bounds);
-        return new CameraWindow(root, bounds, String.valueOf(root.getPackageName()));
+        return new CameraWindow(root, bounds, String.valueOf(root.getPackageName()),-1);
     }
 
     private void reconcile(String trigger) {
         reconcileCount++;
         try {
             CameraWindow focused = focusedWindow();
+            boolean missingCameraRoot=lastBounds!=null&&controls!=null&&controls.attached()&&CameraWindowRetention.hold(
+                    "unavailable".equals(focused.packageName()),focused.id(),lastCameraWindowId,
+                    android.os.SystemClock.uptimeMillis(),Math.max(configurationHoldUntil,lastCameraSeen+750));
             boolean ownPopupRoot = controls != null && controls.popupOpen() && focused.root() != null
                 && getPackageName().equals(focused.packageName())
                 && !MainActivity.foreground();
-            if (!ownPopupRoot && !focused.packageName().equals(foreground)) {
+            if (!ownPopupRoot && !missingCameraRoot && !focused.packageName().equals(foreground)) {
                 foreground = focused.packageName();
                 ProbeLog.event(this, "foreground_changed", "package", foreground, "trigger", trigger);
             }
@@ -146,24 +154,33 @@ public final class CameraWatchService extends AccessibilityService {
                 hide("screen-off-or-locked"); return;
             }
             if (!Settings.canDrawOverlays(this)) { hide("overlay-permission-missing"); return; }
+            if(missingCameraRoot){
+                controls.configurationChanged();
+                if(!handler.hasCallbacks(reconcileTask))handler.postDelayed(reconcileTask,100);
+                return;
+            }
             if (ownPopupRoot) {
                 // During IME transitions the active accessibility root may briefly be our panel.
+                if(lastBounds!=null&&lastCameraWindow!=null){
+                    show(new Rect(lastBounds),"settings-popup-held");controls.show(lastCameraWindow,lastBounds,null);
+                }
                 if (!handler.hasCallbacks(reconcileTask)) handler.postDelayed(reconcileTask,200);
                 return;
             }
             if (!CAMERA_PACKAGE.equals(foreground)) { hide("camera-not-focused"); return; }
+            lastCameraWindowId=focused.id();lastCameraSeen=android.os.SystemClock.uptimeMillis();
             if (focused.bounds().isEmpty()) { hide("camera-bounds-unavailable"); return; }
-            if (controls.popupOpen() && lastBounds != null) {
-                // Our panel/keyboard can hide native capture nodes. The camera remains underneath.
-                // Rotation closes the panel before this path can reuse old coordinates.
-                show(new Rect(lastBounds), "settings-popup-held");
-                return;
-            }
             PreviewLocator.Result result = new PreviewLocator().locate(focused.root(), focused.bounds());
             Rect bounds = result.bounds();
             String source = result.source();
+            boolean holding=bounds.isEmpty()&&lastBounds!=null&&(controls.popupOpen()||android.os.SystemClock.uptimeMillis()<configurationHoldUntil);
+            if(holding){
+                // Hold only while the camera is underneath our own settings, and map the
+                // cached frame into the new display coordinates if its window has rotated.
+                bounds=heldFrame(focused.bounds());source="settings-popup-held";
+            }
             boolean infoChanged = !previewRatio.equals(result.ratio()) || !cameraMode.equals(result.mode());
-            previewRatio = result.ratio(); cameraMode = result.mode();
+            if(!holding){previewRatio = result.ratio(); cameraMode = result.mode();}
             if (bounds.isEmpty()) { hide(source); return; }
             if (debugBounds != null) {
                 bounds = new Rect(debugBounds);
@@ -171,7 +188,8 @@ public final class CameraWatchService extends AccessibilityService {
                 source = "adb-calibrated";
             }
             show(bounds, source);
-            controls.show(focused.bounds(), focused.root());
+            controls.show(focused.bounds(),bounds,focused.root());
+            lastCameraWindow=new Rect(focused.bounds());lastCameraDisplay=displayTurn();
             if (infoChanged) writeStatus();
         } catch (RuntimeException error) {
             ProbeLog.event(this, "reconcile_error", "error", error.toString());
@@ -181,6 +199,7 @@ public final class CameraWatchService extends AccessibilityService {
 
     @android.annotation.SuppressLint("RtlHardcoded") // These are physical screen coordinates, independent of locale.
     private void show(Rect bounds, String source) {
+        if(grid!=null)grid.setDisplayQuarterTurn(displayTurn());
         boolean changed = grid == null || !bounds.equals(lastBounds) || !source.equals(locator);
         if (!changed) return;
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(bounds.width(), bounds.height(),
@@ -197,6 +216,7 @@ public final class CameraWatchService extends AccessibilityService {
         try {
             if (grid == null) {
                 GridView candidate = new GridView(this);
+                candidate.setDisplayQuarterTurn(displayTurn());
                 manager.addView(candidate, params);
                 grid = candidate;
             } else { manager.updateViewLayout(grid, params); }
@@ -208,6 +228,22 @@ public final class CameraWatchService extends AccessibilityService {
             ProbeLog.event(this, "overlay_error", "error", error.toString());
             hide("overlay-add-failed");
         }
+    }
+
+    @SuppressWarnings("deprecation") private int displayTurn(){return manager.getDefaultDisplay().getRotation();}
+    private Rect heldFrame(Rect nextWindow){
+        if(nextWindow.equals(lastCameraWindow))return new Rect(lastBounds);
+        if(lastCameraWindow==null||lastCameraWindow.isEmpty())return new Rect(lastBounds);
+        int turn=Math.floorMod(displayTurn()-lastCameraDisplay,4);
+        float left=Float.MAX_VALUE,top=Float.MAX_VALUE,right=-Float.MAX_VALUE,bottom=-Float.MAX_VALUE;
+        for(int x:new int[]{lastBounds.left,lastBounds.right})for(int y:new int[]{lastBounds.top,lastBounds.bottom}){
+            float u=(x-lastCameraWindow.left)/(float)lastCameraWindow.width(),v=(y-lastCameraWindow.top)/(float)lastCameraWindow.height();
+            float nx=switch(turn){case 1->v;case 2->1-u;case 3->1-v;default->u;};
+            float ny=switch(turn){case 1->1-u;case 2->1-v;case 3->u;default->v;};
+            left=Math.min(left,nx);right=Math.max(right,nx);top=Math.min(top,ny);bottom=Math.max(bottom,ny);
+        }
+        return new Rect(nextWindow.left+Math.round(left*nextWindow.width()),nextWindow.top+Math.round(top*nextWindow.height()),
+            nextWindow.left+Math.round(right*nextWindow.width()),nextWindow.top+Math.round(bottom*nextWindow.height()));
     }
 
     private void hide(String why) {
@@ -241,11 +277,13 @@ public final class CameraWatchService extends AccessibilityService {
         boolean appearanceChanged=!appearanceKey.equals(appearance());appearanceKey=appearance();settings=latest;paused=nextPaused;
         if(sessionChanged){handler.removeCallbacks(poll);if(!paused)handler.postDelayed(poll,1000);}
         if(grid!=null&&change.render())grid.applySettings();
+        if(controls!=null&&appearanceChanged)controls.appearanceChanged();
         if(controls!=null&&(change.menu()||appearanceChanged))controls.refresh();
         if(sessionChanged||appearanceChanged)reconcile("settings-changed");
         writeStatus();
     }
     void setDebugBounds(Rect bounds) { debugBounds = bounds; reconcile("bounds-command"); }
+    void setDebugUiOrientation(int turn){if(controls!=null)controls.debugOrientation(turn);writeStatus();}
     String shortStatus() { return "상태: " + reason + "\n영역: " + locator + "\n비율: " + previewRatio + " · 모드: " + cameraMode; }
     String diagnosticStatus() {
         try {
@@ -260,6 +298,10 @@ public final class CameraWatchService extends AccessibilityService {
                 .put("bounds", lastBounds == null ? JSONObject.NULL : lastBounds.toShortString())
                 .put("windowAlpha", alpha).put("overlayPermission", Settings.canDrawOverlays(this))
                 .put("controlsAttached", controls != null && controls.attached())
+                .put("menuExpanded",controls!=null&&controls.expanded()).put("menuBounds",controls==null?"none":controls.menuBounds())
+                .put("openerBounds",controls==null?"none":controls.openerBounds()).put("uiQuarterTurn",controls==null?0:controls.uiQuarterTurn()).put("displayQuarterTurn",manager==null?0:displayTurn())
+                .put("naturalOpenerBounds",controls==null?"none":controls.naturalOpenerBounds()).put("naturalMenuBounds",controls==null?"none":controls.naturalMenuBounds())
+                .put("iconRotation",controls==null?0:controls.iconRotation())
                 .put("settingsPopupOpen", controls != null && controls.popupOpen())
                 .put("gridHidden", settings != null && settings.hidden)
                 .put("selectedGrids", settings == null ? JSONObject.NULL : new org.json.JSONArray(settings.selected))
@@ -295,7 +337,8 @@ public final class CameraWatchService extends AccessibilityService {
             .append(" id=").append(node.getViewIdResourceName()).append(" bounds=").append(bounds.toShortString())
             .append(" visible=").append(node.isVisibleToUser()).append(" clickable=").append(node.isClickable())
             .append(" selected=").append(node.isSelected()).append(" checked=").append(node.isChecked())
-            .append(" text=").append(node.getText()).append(" desc=").append(node.getContentDescription()).append('\n');
+            .append(" text=").append(String.valueOf(node.getText()).replace('\n',' ').replace('\r',' '))
+            .append(" desc=").append(String.valueOf(node.getContentDescription()).replace('\n',' ').replace('\r',' ')).append('\n');
         for (int i = 0; i < node.getChildCount(); i++) dumpNode(node.getChild(i), out, depth + 1, count);
     }
     void captureDiagnostics() {
@@ -320,7 +363,10 @@ public final class CameraWatchService extends AccessibilityService {
     @Override public void onConfigurationChanged(Configuration configuration) {
         super.onConfigurationChanged(configuration);
         debugBounds = null; // calibrated portrait coordinates must never survive rotation
-        if (controls != null) controls.hide();
+        configurationHoldUntil=android.os.SystemClock.uptimeMillis()+750;
+        String nextAppearance=appearance();
+        if(!appearanceKey.equals(nextAppearance)){appearanceKey=nextAppearance;if(controls!=null)controls.appearanceChanged();}
+        if (controls != null) controls.configurationChanged();
         handler.postDelayed(reconcileTask, 200);
     }
     @Override public void onInterrupt() { hide("accessibility-interrupted"); }

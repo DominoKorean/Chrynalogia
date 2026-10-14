@@ -14,14 +14,21 @@ import android.widget.*;
 public final class MainActivity extends Activity {
     private static MainActivity visibleActivity;
     static boolean foreground(){return visibleActivity!=null;}
+    static void refreshSessionState(){
+        MainActivity a=visibleActivity;if(a!=null)a.uiHandler.post(()->{if(visibleActivity==a&&a.panel!=null)a.panel.refreshExecutionState();});
+    }
     private GridSettings settings;
     private boolean pendingManual;
+    private boolean returningFromSystemSettings;
     private final android.os.Handler uiHandler=new android.os.Handler(android.os.Looper.getMainLooper());
     private SettingsPanel panel;
+    private CompatibilityNotice compatibilityNotice;
     @Override public void onCreate(Bundle state) {
         setTheme(AppAppearance.dark(this)?R.style.AppDark:R.style.AppLight);
         super.onCreate(state);settings=new GridSettings(this);
+        compatibilityNotice=new CompatibilityNotice(this,()->DeviceCompatibility.hasOneUi(this));
         pendingManual=state!=null&&state.getBoolean("pendingManual",false);
+        returningFromSystemSettings=state!=null&&state.getBoolean("returningFromSystemSettings",false);
         if(settings.onboarding&&state==null&&getLastNonConfigurationInstance()==null) {
             settings.activate(this);if(settings.runMode.equals("manual"))startManual();else refreshService();
         }
@@ -45,10 +52,12 @@ public final class MainActivity extends Activity {
             public void importGrid(){startActivity(new Intent(MainActivity.this,ImportActivity.class));}
             public void modeChanged(String mode){pendingManual=false;SessionController.changeMode(MainActivity.this,mode);settings.reload();if(mode.equals("manual"))startManual();render();}
             public void stop(){stopSession();render();}
-            public void startSession(){settings.activate(MainActivity.this);startManual();render();}
+            public void startSession(){settings.reload();if(settings.runMode.equals("manual"))startManual();else SessionController.requestStart(MainActivity.this);render();}
             public void openCamera(){MainActivity.this.openCamera();}
             public void appearanceChanged(){refreshService();uiHandler.postDelayed(()->{if(!isFinishing()&&!isDestroyed())recreate();},200);}
-            public void permissions(boolean overlay){startActivity(overlay?new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,Uri.parse("package:"+getPackageName())):new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));}
+            public void permissions(boolean overlay){returningFromSystemSettings=true;if(overlay)startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,Uri.parse("package:"+getPackageName())));else SystemSettings.accessibility(MainActivity.this);}
+            public void openLanguageSettings(){returningFromSystemSettings=true;SystemSettings.language(MainActivity.this);}
+            public void disableAccessibility(){returningFromSystemSettings=true;SystemSettings.accessibility(MainActivity.this);}
         });root.addView(panel,new LinearLayout.LayoutParams(-1,0,1));}
         setContentView(root);
         int bars=WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS|WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
@@ -73,10 +82,10 @@ public final class MainActivity extends Activity {
     }
     private void stopSession(){pendingManual=false;SessionController.stop(this);}
     private void refreshService(){CameraConnection.requestRefresh();}
-    @Override protected void onSaveInstanceState(Bundle state){state.putBoolean("pendingManual",pendingManual);super.onSaveInstanceState(state);}
+    @Override protected void onSaveInstanceState(Bundle state){state.putBoolean("pendingManual",pendingManual);state.putBoolean("returningFromSystemSettings",returningFromSystemSettings);super.onSaveInstanceState(state);}
     @Override public Object onRetainNonConfigurationInstance(){return Boolean.TRUE;}
-    @Override protected void onRestart(){super.onRestart();settings.reload();if(settings.onboarding&&settings.runMode.equals("manual")){settings.activate(this);startManual();}}
-    @Override protected void onResume(){super.onResume();visibleActivity=this;if(settings!=null)render();}
+    @Override protected void onRestart(){super.onRestart();settings.reload();if(!returningFromSystemSettings&&settings.onboarding&&settings.runMode.equals("manual")){settings.activate(this);startManual();}}
+    @Override protected void onResume(){super.onResume();returningFromSystemSettings=false;visibleActivity=this;if(settings!=null)render();if(compatibilityNotice!=null)compatibilityNotice.showIfNeeded();}
     @Override protected void onPause(){if(visibleActivity==this)visibleActivity=null;super.onPause();}
-    @Override protected void onDestroy(){uiHandler.removeCallbacksAndMessages(null);if(panel!=null)panel.dismissChoices();if(visibleActivity==this)visibleActivity=null;super.onDestroy();}
+    @Override protected void onDestroy(){uiHandler.removeCallbacksAndMessages(null);if(compatibilityNotice!=null)compatibilityNotice.destroy();if(panel!=null)panel.dismissChoices();if(visibleActivity==this)visibleActivity=null;super.onDestroy();}
 }

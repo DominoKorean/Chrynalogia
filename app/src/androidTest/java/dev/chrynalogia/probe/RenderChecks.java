@@ -21,8 +21,22 @@ public final class RenderChecks extends Instrumentation {
         Map<String,?> original=new HashMap<>(prefs.getAll());
         Bundle result=new Bundle();
         int resultCode=-1;Throwable failure=null;
+        java.util.concurrent.atomic.AtomicBoolean finished=new java.util.concurrent.atomic.AtomicBoolean();
+        Thread watchdog=new Thread(()->{
+            try{Thread.sleep(30000);if(!finished.get()){
+                StringBuilder stacks=new StringBuilder();
+                for(var entry:Thread.getAllStackTraces().entrySet()){stacks.append(entry.getKey().getName()).append('\n');for(StackTraceElement frame:entry.getValue())stacks.append("  ").append(frame).append('\n');}
+                java.nio.file.Files.writeString(new File(c.getFilesDir(),"test-stacks.txt").toPath(),stacks);
+            }}catch(Exception ignored){}
+        },"test-watchdog");watchdog.setDaemon(true);watchdog.start();
         try {
-            if(suite.equals("settings")) {
+            if(suite.equals("compatibility")) {
+                passed+=CompatibilityChecks.run(c,this);
+            } else if(suite.equals("ui")) {
+                passed+=UiChecks.run(c,this);
+            } else if(suite.equals("geometry")) {
+                passed+=GridRenderChecks.run(c,this);
+            } else if(suite.equals("settings")) {
                 passed+=SettingsChecks.run(c);
             } else if(suite.equals("failures")) {
                 passed+=FailureChecks.files(c);passed+=FailureChecks.restore(c);
@@ -85,6 +99,9 @@ public final class RenderChecks extends Instrumentation {
             check(!SessionPolicy.active(new SessionPolicy.Input(true,"manual",false,2,3,true,true)),"Manual expires across reboot");
             }
             if(suite.equals("all")){
+                restore(prefs,original);passed+=CompatibilityChecks.run(c,this);
+                restore(prefs,original);passed+=UiChecks.run(c,this);
+                restore(prefs,original);passed+=GridRenderChecks.run(c,this);
                 restore(prefs,original);passed+=SettingsChecks.run(c);
                 restore(prefs,original);passed+=ImportChecks.run(c);
                 restore(prefs,original);passed+=SessionChecks.run(c,this);
@@ -93,6 +110,7 @@ public final class RenderChecks extends Instrumentation {
             }
         } catch(Throwable error) {failure=error;}
         finally {
+            finished.set(true);watchdog.interrupt();
             java.util.ArrayList<RestoreSteps.Step> steps=new java.util.ArrayList<>();steps.add(()->restore(prefs,original));
             for(File file:created)steps.add(()->{if(file.exists()&&!file.delete())throw new java.io.IOException("Could not remove test file: "+file.getName());});
             try{RestoreSteps.run(steps.toArray(RestoreSteps.Step[]::new));}catch(Exception error){if(failure==null)failure=error;else failure.addSuppressed(error);}
