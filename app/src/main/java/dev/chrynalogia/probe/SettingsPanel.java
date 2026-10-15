@@ -24,6 +24,7 @@ final class SettingsPanel extends FrameLayout {
     interface Actions {
         void changed();void importGrid();void modeChanged(String mode);void stop();
         default void openCamera() {}
+        default void openExpertRaw() {}
         default void appearanceChanged() {changed();}
         default void startSession() {}
         default void permissions(boolean overlay) {}
@@ -59,6 +60,11 @@ final class SettingsPanel extends FrameLayout {
         if(compact||page!=0)collapseHeader();
     }
     private static int tabIndex(Object value){return value instanceof Integer n?n:0;}
+    private Button cameraButton(int label,Runnable action){
+        Context c=getContext();Button b=Ui.button(c,s(label),action);b.setTextSize(14);b.setTypeface(null,Typeface.NORMAL);
+        b.setCompoundDrawablesRelative(KitIcon.drawable(c,R.raw.kit_camera,Ui.ink(c)),null,null,null);
+        b.setCompoundDrawableTintList(android.content.res.ColorStateList.valueOf(Ui.ink(c)));b.setCompoundDrawablePadding(Ui.dp(c,8));return b;
+    }
     private String s(int id) {return getContext().getString(id);}
     private void changed() {SettingsStore.saveChanges(settings);actions.changed();for(GridView v:previews)v.applySettings();}
     private void build() {
@@ -89,8 +95,13 @@ final class SettingsPanel extends FrameLayout {
     private void grids() {
         Context c=getContext();heading(s(R.string.app_name),!compact);
         if(!compact) {
-            LinearLayout camera=new LinearLayout(c);camera.setGravity(Gravity.END);camera.setPadding(Ui.dp(c,24),0,Ui.dp(c,24),Ui.dp(c,12));
-            Button b=Ui.button(c,s(R.string.open_camera),actions::openCamera);b.setTextSize(14);b.setTypeface(null,Typeface.NORMAL);b.setCompoundDrawablesRelative(KitIcon.drawable(c,R.raw.kit_camera,Ui.ink(c)),null,null,null);b.setCompoundDrawableTintList(android.content.res.ColorStateList.valueOf(Ui.ink(c)));b.setCompoundDrawablePadding(Ui.dp(c,8));camera.addView(b);content.addView(camera);
+            LinearLayout camera=Ui.column(c);camera.setGravity(Gravity.END);camera.setPadding(Ui.dp(c,24),0,Ui.dp(c,24),Ui.dp(c,12));
+            camera.addView(cameraButton(R.string.open_camera,actions::openCamera),new LinearLayout.LayoutParams(-2,-2));
+            if(c.getPackageManager().getLaunchIntentForPackage(CameraApps.EXPERT_RAW)!=null){
+                Button expert=cameraButton(R.string.open_expert_raw,actions::openExpertRaw);
+                LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-2,-2);params.topMargin=Ui.dp(c,4);camera.addView(expert,params);
+            }
+            content.addView(camera);
         }
         LinearLayout selection=Ui.section(content);
         Ui.toggle(selection,s(R.string.multi_select),settings.multi,on->{

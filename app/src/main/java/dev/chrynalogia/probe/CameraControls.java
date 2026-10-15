@@ -107,6 +107,7 @@ final class CameraControls {
         for(int i=0;i<node.getChildCount();i++)findHeader(node.getChild(i),depth+1,screenWindow,quarter);
     }
     void refresh() {if(toolbar!=null){int visibility=stopCell.getVisibility();updateActions();if(visibility!=stopCell.getVisibility())layout();else rotateIcons();}}
+    void resetCameraAnchor(){window=null;preview=null;safe=null;header=null;headerCandidate=null;}
     void configurationChanged(){if(toolbar!=null){if(layoutQuarter!=displayTurn())layout();else rotateIcons();}}
     private void flip(boolean horizontal){
         boolean changeX=horizontal==CameraCoordinates.horizontalFlipChangesX(uiQuarterTurn());
@@ -218,7 +219,8 @@ final class CameraControls {
         KitIcon close=new KitIcon(service,R.raw.kit_close,Ui.ink(service));close.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);close.setContentDescription(service.getString(R.string.close));close.setPadding(Ui.dp(service,12),Ui.dp(service,12),Ui.dp(service,12),Ui.dp(service,12));close.setOnClickListener(v->closePopup());top.addView(close,new LinearLayout.LayoutParams(Ui.dp(service,48),Ui.dp(service,48)));popup.addView(top);
         settingsPanel=new SettingsPanel(service,new SettingsPanel.Actions() {
             public void changed(){service.refreshSettings();}
-            public void importGrid(){closePopup();Intent i=new Intent(service,ImportActivity.class).putExtra("returnCamera",true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);service.startActivity(i);}
+            public void importGrid(){closePopup();Intent i=new Intent(service,ImportActivity.class).putExtra("returnCamera",true)
+                    .putExtra(ImportActivity.RETURN_CAMERA_PACKAGE,service.cameraPackage()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);service.startActivity(i);}
             public void modeChanged(String mode){
                 GridSettings s=new GridSettings(service);
                 if(mode.equals("manual")) {

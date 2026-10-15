@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  Composition guides over Samsung Camera. Chrynalogia adds customizable grids to the camera preview so you can frame a shot while using Samsung's camera controls.
+  Composition guides over Samsung Camera and Expert RAW. Chrynalogia adds customizable grids to the camera preview so you can frame a shot while using Samsung's camera controls.
 </p>
 
 ## Features
@@ -22,14 +22,14 @@
 
 ## Compatibility
 
-Designed for Samsung Camera on the latest One UI, with Android 14 or newer. Tested on **Galaxy S23 / One UI 8.5**; other devices have not been verified. Non-One UI devices show a first-launch warning, but you can continue for special setups. Other camera apps are not supported.
+Designed for Samsung Camera and Expert RAW on the latest One UI, with Android 14 or newer. Tested on **Galaxy S23 / One UI 8.5**; other devices have not been verified. Expert RAW must be installed separately on a compatible device. Non-One UI devices show a first-launch warning, but you can continue for special setups. Other camera apps are not supported.
 
 ## Getting started
 
 1. Install the APK manually. The app is not distributed through Google Play.
 2. Follow the illustrated setup guide to allow display over other apps and enable **Chrynalogia** in Accessibility.
 3. Choose **Always on** or **Start manually**. Manual mode also needs notification permission.
-4. Open Samsung Camera, then tap the Chrynalogia logo to access the grid menu.
+4. Open Samsung Camera or Expert RAW, then tap the Chrynalogia logo to access the grid menu. The app also offers an Expert RAW launch button when it is installed.
 
 Grids are on-screen guides and do not appear in saved photos. Accessibility detects camera UI on your device; screens and photos are not uploaded.
 
@@ -53,7 +53,7 @@ On Windows with PowerShell and JDK 17 or newer:
 .\scripts\Release.ps1
 ```
 
-Signed release APK: `artifacts/Chrynalogia-v1.0.4.apk`. Keep a private backup of the `.signing` folder created on the first build; future updates require the same signing key. This folder is excluded from Git.
+Signed release APK: `artifacts/Chrynalogia-v1.1.0.apk`. Keep a private backup of the `.signing` folder created on the first build; future updates require the same signing key. This folder is excluded from Git.
 
 For a debug build, use `.\scripts\Build.ps1`. The first release uses a different certificate, so uninstall the debug app before installing it.
 

@@ -15,7 +15,13 @@ final class PreviewLocator {
 
     Result locate(AccessibilityNodeInfo root, Rect window) {
         preview = null; captureControls = false; modePicker = false;
-        mode = "unknown"; visited = 0;
+        mode = root!=null&&CameraApps.EXPERT_RAW.contentEquals(root.getPackageName())?"Expert RAW":"unknown"; visited = 0;
+        // Native camera settings can contain a large preference tree. Reject those
+        // pages by their missing capture controls before walking every preference.
+        if(root!=null&&CameraApps.supports(root.getPackageName())
+                &&!hasCaptureControl(root,"center_button_container")&&!hasCaptureControl(root,"recording_stop_button")){
+            return new Result(new Rect(),"camera-preview-ui-unavailable","unknown",mode);
+        }
         if (root != null) walk(root, window, 0);
         // More/settings screens can leave the camera SurfaceView behind their UI.
         if (modePicker || !captureControls) {
@@ -25,6 +31,12 @@ final class PreviewLocator {
             return new Result(new Rect(), "camera-preview-node-unavailable", "unknown", mode);
         }
         return new Result(preview, "camera-preview-view", describeRatio(preview, window), mode);
+    }
+
+    private static boolean hasCaptureControl(AccessibilityNodeInfo root,String id){
+        for(AccessibilityNodeInfo node:root.findAccessibilityNodeInfosByViewId(root.getPackageName()+":id/"+id))
+            if(node.isVisibleToUser())return true;
+        return false;
     }
 
     private void walk(AccessibilityNodeInfo node, Rect window, int depth) {

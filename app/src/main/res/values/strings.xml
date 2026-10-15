@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Chrynalogia</string>
     <string name="guide_title">Set up camera grids</string>
-    <string name="guide_reason">Accessibility detects Samsung Camera and its preview bounds, so grids follow changes to the camera mode and aspect ratio.</string>
+    <string name="guide_reason">Accessibility detects Samsung Camera or Expert RAW and its preview bounds, so grids follow changes to the camera mode and aspect ratio.</string>
     <string name="guide_privacy">Accessibility grants broad access. This app reads UI positions; it does not perform taps, enter text, or record or upload screens and photos.</string>
     <string name="guide_step">Step %1$d of %2$d</string>
     <string name="guide_example">Example: One UI 8.5. Names and positions may vary with your system language or version.</string>
@@ -26,7 +26,7 @@
     <string name="guide_confirm_title">Review the permission</string>
     <string name="guide_confirm_body">Read the Android permission explanation. If you agree, tap Allow yourself. Android describes the full capabilities of accessibility; Chrynalogia does not automate gestures or text input. Return to this app afterward.</string>
     <string name="guide_overlay_title">Allow grids over the camera</string>
-    <string name="guide_overlay_body">Open Display over other apps below and turn on the switch beside Chrynalogia. This is needed to display grids above Samsung Camera. Return here afterward; the permission statuses below will update.</string>
+    <string name="guide_overlay_body">Open Display over other apps below and turn on the switch beside Chrynalogia. This is needed to display grids above Samsung Camera and Expert RAW. Return here afterward; the permission statuses below will update.</string>
     <string name="guide_open_settings">Open Settings app</string>
     <string name="guide_not_blocked">Accessibility is not blocked</string>
     <string name="guide_previous">Previous</string>
@@ -35,13 +35,15 @@
     <string name="guide_later">Set up later</string>
     <string name="guide_reopen">Permission setup guide</string>
     <string name="compatibility_title">Unsupported device</string>
-    <string name="compatibility_message">This app only works with Samsung Camera on One UI. It cannot be used on this device. You can still continue if you have a special setup.</string>
+    <string name="compatibility_message">This app only works with Samsung Camera and Expert RAW on One UI. It cannot be used on this device. You can still continue if you have a special setup.</string>
     <string name="compatibility_continue">Continue anyway</string>
     <string name="tab_grid">Grid</string>
     <string name="tab_line">Line</string>
     <string name="tab_settings">Settings</string>
     <string name="multi_select">Multiple selection</string>
     <string name="open_camera">Open Samsung Camera</string>
+    <string name="open_expert_raw">Open Expert RAW</string>
+    <string name="expert_raw_missing">Expert RAW was not found.</string>
     <string name="files_title">Custom files</string>
     <string name="files_note">Add SVG lines or PNG, JPEG, and WebP images. Images use one color and keep their original line thickness.</string>
     <string name="import_grid">Add grid from file</string>
@@ -92,15 +94,15 @@
     <string name="allow_access">Enable Chrynalogia in Accessibility</string>
     <string name="permissions_first">Allow overlay and accessibility permissions first.</string>
     <string name="camera_missing">Samsung Camera was not found.</string>
-    <string name="welcome_intro">Composition grids over Samsung Camera.</string>
+    <string name="welcome_intro">Composition grids over Samsung Camera and Expert RAW.</string>
     <string name="welcome_mode">Choose how to run</string>
-    <string name="welcome_disclosure">The accessibility service runs in the background to detect Samsung Camera. Always on displays grids whenever the camera opens. Manual mode starts when you open this app and ends from the notification or on reboot.</string>
+    <string name="welcome_disclosure">The accessibility service runs in the background to detect Samsung Camera and Expert RAW. Always on displays grids whenever either camera opens. Manual mode starts when you open this app and ends from the notification or on reboot.</string>
     <string name="welcome_privacy">Accessibility reads camera UI coordinates and the foreground app on this device. Screens and photos are never uploaded.</string>
     <string name="choose_manual">Start manually</string>
     <string name="notification_required">Notification permission is needed for a manual overlay session.</string>
     <string name="manual_channel">Manual overlay status</string>
     <string name="running_title">Chrynalogia is running</string>
-    <string name="running_description">Displaying composition grids in Samsung Camera.</string>
+    <string name="running_description">Displaying composition grids in Samsung Camera and Expert RAW.</string>
     <string name="stop">Stop</string>
     <string name="close">Close</string>
     <string name="open_grid_menu">Open grid menu</string>
@@ -126,7 +128,7 @@
     <string name="file_type_error">Choose an SVG, PNG, JPEG, or WebP file.</string>
     <string name="image_read_error">Unable to decode the image.</string>
     <string name="image_save_error">Unable to save the image.</string>
-    <string name="accessibility_description">Detects Samsung Camera and displays composition guides. Camera UI coordinates and button data are used for on-device debugging. Does not perform gestures or record the screen.</string>
+    <string name="accessibility_description">Detects Samsung Camera and Expert RAW and displays composition guides. Camera UI coordinates and button data are used for on-device debugging. Does not perform gestures or record the screen.</string>
     <string name="grid_thirds">Rule of thirds</string>
     <string name="desc_thirds">Divide the frame into thirds.</string>
     <string name="grid_cross">Center cross</string>

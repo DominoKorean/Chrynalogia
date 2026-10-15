@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Chrynalogia</string>
     <string name="guide_title">카메라 그리드 사용 준비</string>
-    <string name="guide_reason">삼성 카메라의 모드·비율과 미리보기 영역을 감지해 그리드를 맞추려면 접근성 권한이 필요합니다.</string>
+    <string name="guide_reason">삼성 카메라와 Expert RAW의 모드·비율과 미리보기 영역을 감지해 그리드를 맞추려면 접근성 권한이 필요합니다.</string>
     <string name="guide_privacy">접근성은 넓은 범위의 권한입니다. 이 앱은 UI 좌표를 확인하며, 터치·문자 입력을 실행하거나 화면·사진을 녹화·업로드하지 않습니다.</string>
     <string name="guide_step">%2$d단계 중 %1$d단계</string>
     <string name="guide_example">One UI 8.5 화면 예시입니다. 시스템 언어·버전에 따라 이름과 위치가 조금 다를 수 있습니다.</string>
@@ -26,7 +26,7 @@
     <string name="guide_confirm_title">권한 설명 확인</string>
     <string name="guide_confirm_body">Android의 권한 설명을 읽고 동의하면 ‘허용’을 직접 누릅니다. 이 창은 접근성의 전체 기능을 설명하지만 Chrynalogia는 터치나 문자 입력을 자동 실행하지 않습니다. 완료하면 이 앱으로 돌아와 주세요.</string>
     <string name="guide_overlay_title">카메라 위에 그리드 표시</string>
-    <string name="guide_overlay_body">아래 ‘다른 앱 위에 표시 허용’을 누르고 Chrynalogia 옆 스위치를 켭니다. 삼성 카메라 위에 그리드를 그리기 위해 필요합니다. 완료하고 돌아오면 아래 권한 상태가 갱신됩니다.</string>
+    <string name="guide_overlay_body">아래 ‘다른 앱 위에 표시 허용’을 누르고 Chrynalogia 옆 스위치를 켭니다. 삼성 카메라와 Expert RAW 위에 그리드를 그리기 위해 필요합니다. 완료하고 돌아오면 아래 권한 상태가 갱신됩니다.</string>
     <string name="guide_open_settings">설정 앱 열기</string>
     <string name="guide_not_blocked">접근성이 차단되지 않았어요</string>
     <string name="guide_previous">이전</string>
@@ -35,13 +35,15 @@
     <string name="guide_later">나중에 설정</string>
     <string name="guide_reopen">권한 설정 안내</string>
     <string name="compatibility_title">지원하지 않는 기기</string>
-    <string name="compatibility_message">이 앱은 One UI의 삼성 카메라에서만 작동합니다. 현재 기기에서는 사용이 불가능합니다. 특수한 환경이라면 계속 사용해 볼 수 있습니다.</string>
+    <string name="compatibility_message">이 앱은 One UI의 삼성 카메라와 Expert RAW에서만 작동합니다. 현재 기기에서는 사용이 불가능합니다. 특수한 환경이라면 계속 사용해 볼 수 있습니다.</string>
     <string name="compatibility_continue">계속 사용</string>
     <string name="tab_grid">그리드</string>
     <string name="tab_line">라인</string>
     <string name="tab_settings">설정</string>
     <string name="multi_select">다중 선택</string>
     <string name="open_camera">삼성 카메라 열기</string>
+    <string name="open_expert_raw">Expert RAW 열기</string>
+    <string name="expert_raw_missing">Expert RAW를 찾지 못했습니다.</string>
     <string name="files_title">커스텀 파일</string>
     <string name="files_note">SVG 선 또는 PNG·JPEG·WebP를 추가합니다. 이미지는 단색으로 표시하며 선 두께가 적용되지 않습니다.</string>
     <string name="import_grid">파일에서 그리드 추가</string>
@@ -92,7 +94,7 @@
     <string name="allow_access">접근성에서 Chrynalogia 켜기</string>
     <string name="permissions_first">오버레이와 접근성 권한을 먼저 허용해 주세요.</string>
     <string name="camera_missing">삼성 카메라를 찾지 못했습니다.</string>
-    <string name="welcome_intro">삼성 카메라 위에 구도 그리드를 표시합니다.</string>
+    <string name="welcome_intro">삼성 카메라와 Expert RAW 위에 구도 그리드를 표시합니다.</string>
     <string name="welcome_mode">실행 방식을 선택해 주세요</string>
     <string name="welcome_disclosure">카메라 실행을 감지하기 위해 접근성 서비스가 백그라운드에서 동작합니다. 항상 켜기는 카메라를 열 때마다 자동 표시합니다. 수동 켜기는 앱을 열면 시작하며, 알림에서 끄거나 재부팅하면 종료됩니다.</string>
     <string name="welcome_privacy">접근성으로 카메라 UI의 좌표와 실행 중인 앱 정보를 읽습니다. 화면이나 사진을 전송하지 않습니다.</string>
@@ -100,7 +102,7 @@
     <string name="notification_required">수동 실행 알림을 표시하려면 알림 권한이 필요합니다.</string>
     <string name="manual_channel">수동 실행 상태</string>
     <string name="running_title">Chrynalogia 실행 중</string>
-    <string name="running_description">삼성 카메라에서 그리드를 표시합니다.</string>
+    <string name="running_description">삼성 카메라와 Expert RAW에서 그리드를 표시합니다.</string>
     <string name="stop">끄기</string>
     <string name="close">닫기</string>
     <string name="open_grid_menu">그리드 메뉴 열기</string>
@@ -126,7 +128,7 @@
     <string name="file_type_error">SVG·PNG·JPEG·WebP 파일을 선택해 주세요.</string>
     <string name="image_read_error">이미지를 읽을 수 없습니다.</string>
     <string name="image_save_error">이미지를 저장할 수 없습니다.</string>
-    <string name="accessibility_description">삼성 카메라가 앞에 있는지 확인하고 촬영 가이드를 표시합니다. 카메라 UI의 좌표와 버튼 정보를 기기 내 디버깅에 사용합니다. 터치를 실행하거나 화면을 녹화하지 않습니다.</string>
+    <string name="accessibility_description">삼성 카메라나 Expert RAW가 앞에 있는지 확인하고 촬영 가이드를 표시합니다. 카메라 UI의 좌표와 버튼 정보를 기기 내 디버깅에 사용합니다. 터치를 실행하거나 화면을 녹화하지 않습니다.</string>
     <string name="grid_thirds">3분할법</string>
     <string name="desc_thirds">가로·세로를 세 부분으로 나눕니다.</string>
     <string name="grid_cross">중앙 십자선</string>

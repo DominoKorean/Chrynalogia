@@ -75,7 +75,8 @@ public final class MainActivity extends Activity {
             public void modeChanged(String mode){pendingManual=false;SessionController.changeMode(MainActivity.this,mode);settings.reload();if(mode.equals("manual"))startManual();render();}
             public void stop(){stopSession();render();}
             public void startSession(){settings.reload();if(settings.runMode.equals("manual"))startManual();else SessionController.requestStart(MainActivity.this);render();}
-            public void openCamera(){MainActivity.this.openCamera();}
+            public void openCamera(){MainActivity.this.openCamera(CameraApps.SAMSUNG_CAMERA);}
+            public void openExpertRaw(){MainActivity.this.openCamera(CameraApps.EXPERT_RAW);}
             public void appearanceChanged(){refreshService();uiHandler.postDelayed(()->{if(!isFinishing()&&!isDestroyed())recreate();},200);}
             public void permissions(boolean overlay){returningFromSystemSettings=true;if(overlay)SystemSettings.overlay(MainActivity.this);else SystemSettings.accessibility(MainActivity.this);}
             public void openPermissionGuide(){permissionHelp=true;guidePage=0;render();}
@@ -90,11 +91,12 @@ public final class MainActivity extends Activity {
         returningFromSystemSettings=true;
         SystemSettings.overlay(this);
     }
-    private void openCamera() {
+    private void openCamera(String packageName) {
         if(!Settings.canDrawOverlays(this)||!CameraConnection.connected()){Toast.makeText(this,R.string.permissions_first,Toast.LENGTH_LONG).show();return;}
         settings.activate(this);if(settings.runMode.equals("manual")&&!startManual())return;refreshService();
-        Intent camera=getPackageManager().getLaunchIntentForPackage(CameraWatchService.CAMERA_PACKAGE);
-        if(camera!=null)startActivity(camera);else Toast.makeText(this,R.string.camera_missing,Toast.LENGTH_LONG).show();
+        Intent camera=getPackageManager().getLaunchIntentForPackage(packageName);
+        if(camera!=null)startActivity(camera);else Toast.makeText(this,
+                CameraApps.EXPERT_RAW.equals(packageName)?R.string.expert_raw_missing:R.string.camera_missing,Toast.LENGTH_LONG).show();
     }
     private void chooseMode(String mode) {settings.runMode=mode;settings.onboarding=true;settings.save();settings.activate(this);if(mode.equals("manual"))startManual();refreshService();render();}
     private boolean startManual() {

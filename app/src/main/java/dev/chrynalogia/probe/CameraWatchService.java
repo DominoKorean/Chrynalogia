@@ -20,7 +20,6 @@ import java.io.PrintWriter;
 import java.util.List;
 
 public final class CameraWatchService extends AccessibilityService {
-    static final String CAMERA_PACKAGE = "com.sec.android.app.camera";
     private final Handler handler = new Handler(Looper.getMainLooper());
     private WindowManager manager;
     private GridView grid;
@@ -34,6 +33,7 @@ public final class CameraWatchService extends AccessibilityService {
     private Rect lastBounds;
     private Rect lastCameraWindow;
     private int lastCameraDisplay;
+    private int lastObservedDisplay;
     private int lastCameraWindowId=-1;
     private long lastCameraSeen;
     private long configurationHoldUntil;
@@ -41,6 +41,8 @@ public final class CameraWatchService extends AccessibilityService {
     private Rect systemWindowBounds;
     private Rect contentWindowBounds;
     private String foreground = "unknown";
+    private String lastCameraPackage="";
+    String cameraPackage(){return CameraApps.returnTarget(foreground);}
     private String locator = "none";
     private String reason = "starting";
     private String previewRatio = "unknown";
@@ -60,6 +62,7 @@ public final class CameraWatchService extends AccessibilityService {
     @Override protected void onServiceConnected() {
         CameraConnection.attach(this);
         manager = getSystemService(WindowManager.class);
+        lastObservedDisplay=displayTurn();
         settings = new GridSettings(this);
         frameRefresh=new FrameRefresh(new AndroidFrameScheduler(),mask->applyPendingSettings());
         appearanceKey=appearance();
@@ -80,7 +83,7 @@ public final class CameraWatchService extends AccessibilityService {
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
         if (manager == null || event == null) return;
         if (paused) return;
-        boolean camera = CAMERA_PACKAGE.contentEquals(event.getPackageName() == null ? "" : event.getPackageName());
+        boolean camera = CameraApps.supports(event.getPackageName());
         int type = event.getEventType();
         if (camera && type == AccessibilityEvent.TYPE_VIEW_CLICKED
                 && android.os.SystemClock.uptimeMillis() - lastClickLog > 100) {
@@ -137,6 +140,12 @@ public final class CameraWatchService extends AccessibilityService {
     private void reconcile(String trigger) {
         reconcileCount++;
         try {
+            // Track observations independently of successful preview renders, so a missing
+            // preview/settings page cannot extend rotation grace on every heartbeat.
+            int observedDisplay=displayTurn();
+            configurationHoldUntil=CameraWindowRetention.rotationDeadline(lastBounds!=null,lastObservedDisplay,
+                    observedDisplay,android.os.SystemClock.uptimeMillis(),configurationHoldUntil);
+            lastObservedDisplay=observedDisplay;
             CameraWindow focused = focusedWindow();
             boolean missingCameraRoot=lastBounds!=null&&controls!=null&&controls.attached()&&CameraWindowRetention.hold(
                     "unavailable".equals(focused.packageName()),focused.id(),lastCameraWindowId,
@@ -167,13 +176,19 @@ public final class CameraWatchService extends AccessibilityService {
                 if (!handler.hasCallbacks(reconcileTask)) handler.postDelayed(reconcileTask,200);
                 return;
             }
-            if (!CAMERA_PACKAGE.equals(foreground)) { hide("camera-not-focused"); return; }
+            if (!CameraApps.supports(foreground)) { hide("camera-not-focused"); return; }
+            if(!foreground.equals(lastCameraPackage)){
+                hide("camera-app-changed");controls.resetCameraAnchor();
+                lastBounds=null;lastCameraWindow=null;lastCameraWindowId=-1;lastCameraSeen=0;
+                debugBounds=null;configurationHoldUntil=0;lastCameraPackage=foreground;
+            }
             lastCameraWindowId=focused.id();lastCameraSeen=android.os.SystemClock.uptimeMillis();
             if (focused.bounds().isEmpty()) { hide("camera-bounds-unavailable"); return; }
             PreviewLocator.Result result = new PreviewLocator().locate(focused.root(), focused.bounds());
             Rect bounds = result.bounds();
             String source = result.source();
-            boolean holding=bounds.isEmpty()&&lastBounds!=null&&(controls.popupOpen()||android.os.SystemClock.uptimeMillis()<configurationHoldUntil);
+            boolean holding=bounds.isEmpty()&&lastBounds!=null&&"camera-preview-node-unavailable".equals(source)
+                    &&(controls.popupOpen()||android.os.SystemClock.uptimeMillis()<configurationHoldUntil);
             if(holding){
                 // Hold only while the camera is underneath our own settings, and map the
                 // cached frame into the new display coordinates if its window has rotated.
@@ -325,8 +340,8 @@ public final class CameraWatchService extends AccessibilityService {
 
     String dumpCameraTree() {
         CameraWindow focused = focusedWindow();
-        if (!CAMERA_PACKAGE.equals(focused.packageName())) return "Camera is not focused: " + focused.packageName();
-        StringBuilder output = new StringBuilder("Samsung camera accessibility tree\n");
+        if (!CameraApps.supports(focused.packageName())) return "Camera is not focused: " + focused.packageName();
+        StringBuilder output = new StringBuilder("Camera accessibility tree: "+focused.packageName()+"\n");
         dumpNode(focused.root(), output, 0, new int[]{0});
         return output.toString();
     }

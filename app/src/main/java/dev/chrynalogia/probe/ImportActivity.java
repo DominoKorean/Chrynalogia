@@ -7,6 +7,7 @@ import android.widget.Toast;
 
 /** System document picker grants access only to the user-selected file. */
 public final class ImportActivity extends Activity {
+    static final String RETURN_CAMERA_PACKAGE="returnCameraPackage";
     private boolean returnCamera;
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);returnCamera=getIntent().getBooleanExtra("returnCamera",false);
@@ -32,7 +33,7 @@ public final class ImportActivity extends Activity {
     private void done() {
         CameraConnection.requestRefresh();
         if(returnCamera) {
-            Intent camera=getPackageManager().getLaunchIntentForPackage(CameraWatchService.CAMERA_PACKAGE);
+            Intent camera=getPackageManager().getLaunchIntentForPackage(CameraApps.returnTarget(getIntent().getStringExtra(RETURN_CAMERA_PACKAGE)));
             if(camera!=null)startActivity(camera);
         }
         finish();

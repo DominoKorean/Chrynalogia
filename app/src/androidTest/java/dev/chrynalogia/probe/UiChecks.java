@@ -58,11 +58,29 @@ final class UiChecks {
             SettingsChecks.require(!new GridSettings(c).active(c),"Background switch stops the session");
             active.performClick();
             SettingsChecks.require(new GridSettings(c).active(c),"Background switch starts the session");
+            c.getSharedPreferences("probe",0).edit().putInt("appTab",0).commit();
+            int[] launched={0,0};
+            SettingsPanel cameras=new SettingsPanel(c,new SettingsPanel.Actions(){
+                public void changed(){}public void importGrid(){}public void modeChanged(String mode){}public void stop(){}
+                public void openCamera(){launched[0]++;}public void openExpertRaw(){launched[1]++;}
+            });
+            findText(cameras,c.getString(R.string.open_camera)).performClick();
+            SettingsChecks.require(launched[0]==1&&launched[1]==0,"Samsung Camera keeps its own launch action");
+            View expert=findText(cameras,c.getString(R.string.open_expert_raw));
+            boolean installed=c.getPackageManager().getLaunchIntentForPackage(CameraApps.EXPERT_RAW)!=null;
+            SettingsChecks.require((expert!=null)==installed,"Expert RAW launch is offered only when installed");
+            if(expert!=null){expert.performClick();SettingsChecks.require(launched[0]==1&&launched[1]==1,"Expert RAW launches through its own action");}
+            c.getSharedPreferences("probe",0).edit().putInt("cameraTab",0).commit();
+            SettingsPanel cameraPopup=new SettingsPanel(c,new SettingsPanel.Actions(){
+                public void changed(){}public void importGrid(){}public void modeChanged(String mode){}public void stop(){}
+            },true);
+            SettingsChecks.require(findText(cameraPopup,c.getString(R.string.open_expert_raw))==null,"In-camera settings do not add a camera launcher");
           } catch(Throwable error){failure.set(error);}
         });
         if(failure.get()!=null)throw new AssertionError("UI regression",failure.get());
-        return 14;
+        return c.getPackageManager().getLaunchIntentForPackage(CameraApps.EXPERT_RAW)!=null?18:17;
     }
+    private static View findText(View root,String text){return PermissionSetupChecks.find(root,text);}
     private static View find(View root,String description){
         if(description.contentEquals(root.getContentDescription()==null?"":root.getContentDescription()))return root;
         if(root instanceof ViewGroup group)for(int i=0;i<group.getChildCount();i++){View result=find(group.getChildAt(i),description);if(result!=null)return result;}
